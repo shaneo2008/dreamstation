@@ -1,0 +1,247 @@
+{
+  "name": "Enhanced Cartesia Voice & Assignment Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cartesia-line-preview",
+        "options": {}
+      },
+      "id": "webhook-line-preview",
+      "name": "Line Preview Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "cartesia-line-preview"
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "voice-assignments/{{ $parameter.scriptId }}",
+        "options": {}
+      },
+      "id": "webhook-get-assignments",
+      "name": "Get Voice Assignments",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 500],
+      "webhookId": "get-voice-assignments"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-assignments/{{ $parameter.scriptId }}",
+        "options": {}
+      },
+      "id": "webhook-save-assignments",
+      "name": "Save Voice Assignments",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 700],
+      "webhookId": "save-voice-assignments"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auto-assign-voices/{{ $parameter.scriptId }}",
+        "options": {}
+      },
+      "id": "webhook-auto-assign",
+      "name": "Auto Assign Voices",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 900],
+      "webhookId": "auto-assign-voices"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Enhanced Input Router\n// Routes requests to appropriate handlers based on webhook endpoint\n\nconst inputData = $input.all()[0];\nconst webhookName = inputData.json.headers?.['x-n8n-webhook-name'] || 'line-preview';\nconst requestPath = inputData.json.headers?.['x-forwarded-path'] || '';\n\nconsole.log('🔀 Routing request:', { webhookName, requestPath });\n\n// Determine request type from path\nlet requestType = 'line-preview';\nif (requestPath.includes('voice-assignments') && requestPath.includes('GET')) {\n  requestType = 'get-assignments';\n} else if (requestPath.includes('voice-assignments') && requestPath.includes('POST')) {\n  requestType = 'save-assignments';\n} else if (requestPath.includes('auto-assign-voices')) {\n  requestType = 'auto-assign';\n}\n\nreturn {\n  json: {\n    ...inputData.json,\n    requestType: requestType,\n    originalData: inputData.json\n  }\n};"
+      },
+      "id": "route-request",
+      "name": "Route Request",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 600]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Your existing line preview validation logic\n// (Copy from your current workflow)\n\nlet input = $input.all()[0].json;\n\nif (input.body) {\n  input = input.body;\n}\n\nconsole.log('📥 Received Line Preview Request:', JSON.stringify(input, null, 2));\n\nif (!input.line_data || !input.line_data.text || !input.line_data.speaker) {\n  throw new Error('❌ Missing required fields: line_data.text and line_data.speaker are required');\n}\n\nif (!input.user_id) {\n  throw new Error('❌ Missing required field: user_id is required');\n}\n\nconst lineData = input.line_data;\nconst userId = input.user_id;\nconst scriptId = input.script_id || 'preview-script';\nconst lineId = input.line_id || 'preview-line';\n\n// Voice mapping: FanCast voices to Cartesia voices\nconst voiceMapping = {\n  'standard-female-1': 'a0e99841-438c-4a64-b679-ae26e5e21b35',\n  'standard-male-1': 'b7d50908-b17c-442d-ad8d-810c63997ed9',\n  'standard-female-2': '79a125e8-cd45-4c13-8a67-188112f4dd22',\n  'standard-male-2': '820a3788-2b37-4d21-847a-b65d8a68c99a',\n  'premium-narrator': 'f9836c6e-a0bd-460e-9d3c-f7299fa60f72'\n};\n\nconst emotionMapping = {\n  'neutral': { speed: 1.0, emotion: 'neutral' },\n  'happy': { speed: 1.1, emotion: 'happy' },\n  'sad': { speed: 0.9, emotion: 'sad' },\n  'angry': { speed: 1.2, emotion: 'angry' },\n  'scared': { speed: 1.3, emotion: 'fear' },\n  'excited': { speed: 1.15, emotion: 'excited' }\n};\n\nconst fancastVoiceId = input.voice_id || 'standard-female-1';\nconst cartesiaVoiceId = voiceMapping[fancastVoiceId] || voiceMapping['standard-female-1'];\nconst emotion = input.emotion || 'neutral';\nconst emotionSettings = emotionMapping[emotion] || emotionMapping['neutral'];\n\nconst requestId = `preview_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;\nconst filename = `${requestId}.mp3`;\n\nconst cartesiaPayload = {\n  model_id: 'sonic-english',\n  transcript: lineData.text,\n  voice: {\n    mode: 'id',\n    id: cartesiaVoiceId\n  },\n  output_format: {\n    container: 'mp3',\n    encoding: 'mp3',\n    sample_rate: 44100\n  },\n  language: 'en',\n  speed: emotionSettings.speed,\n  emotion: emotionSettings.emotion\n};\n\nreturn {\n  json: {\n    success: true,\n    request_id: requestId,\n    filename: filename,\n    user_id: userId,\n    script_id: scriptId,\n    line_id: lineId,\n    line_data: lineData,\n    cartesia_payload: cartesiaPayload,\n    voice_info: {\n      fancast_voice_id: fancastVoiceId,\n      cartesia_voice_id: cartesiaVoiceId,\n      emotion: emotion,\n      speed: emotionSettings.speed\n    }\n  }\n};"
+      },
+      "id": "validate-line-preview",
+      "name": "Validate Line Preview",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "resource": "database",
+        "operation": "select",
+        "table": {
+          "value": "voice_assignments"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "script_id",
+              "condition": "equal",
+              "value": "={{ $json.script_id }}"
+            }
+          ]
+        }
+      },
+      "id": "get-assignments-db",
+      "name": "Get Assignments from DB",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process Voice Assignment Save Request\n\nlet input = $input.all()[0].json;\nif (input.body) {\n  input = input.body;\n}\n\nconsole.log('💾 Processing Save Voice Assignments:', JSON.stringify(input, null, 2));\n\nif (!input.script_id || !input.assignments || !input.user_id) {\n  throw new Error('❌ Missing required fields: script_id, assignments, and user_id are required');\n}\n\n// Convert assignments array to format for database upsert\nconst formattedAssignments = input.assignments.map(assignment => ({\n  script_id: input.script_id,\n  production_id: input.production_id || null,\n  character_name: assignment.character_name,\n  cartesia_voice_id: assignment.cartesia_voice_id,\n  voice_name: assignment.voice_name,\n  voice_settings: assignment.voice_settings || {},\n  emotion_mappings: assignment.emotion_mappings || {},\n  default_emotion: assignment.default_emotion || 'neutral',\n  lines_count: assignment.lines_count || 0,\n  total_duration: assignment.total_duration || 0\n}));\n\nreturn {\n  json: {\n    assignments: formattedAssignments,\n    script_id: input.script_id,\n    production_id: input.production_id,\n    user_id: input.user_id\n  }\n};"
+      },
+      "id": "process-save-request",
+      "name": "Process Save Request",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 700]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "resource": "database",
+        "operation": "upsert",
+        "table": {
+          "value": "voice_assignments"
+        },
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "script_id",
+              "value": "={{ $json.script_id }}"
+            },
+            {
+              "column": "production_id",
+              "value": "={{ $json.production_id }}"
+            },
+            {
+              "column": "character_name",
+              "value": "={{ $json.character_name }}"
+            },
+            {
+              "column": "cartesia_voice_id",
+              "value": "={{ $json.cartesia_voice_id }}"
+            },
+            {
+              "column": "voice_name",
+              "value": "={{ $json.voice_name }}"
+            },
+            {
+              "column": "voice_settings",
+              "value": "={{ $json.voice_settings }}"
+            },
+            {
+              "column": "emotion_mappings",
+              "value": "={{ $json.emotion_mappings }}"
+            },
+            {
+              "column": "default_emotion",
+              "value": "={{ $json.default_emotion }}"
+            }
+          ]
+        },
+        "upsertFields": ["script_id", "character_name"]
+      },
+      "id": "save-assignments-db",
+      "name": "Save Assignments to DB",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [900, 700]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Auto-Assign Voices Based on Character Analysis\n\nlet input = $input.all()[0].json;\nif (input.body) {\n  input = input.body;\n}\n\nconsole.log('🤖 Processing Auto-Assign Request:', JSON.stringify(input, null, 2));\n\nif (!input.script_id || !input.characters) {\n  throw new Error('❌ Missing required fields: script_id and characters array required');\n}\n\n// Cartesia voice library with character matching\nconst voiceLibrary = {\n  // Female voices\n  'a0e99841-438c-4a64-b679-ae26e5e21b35': { name: 'Sarah', gender: 'female', style: 'warm', age: 'adult' },\n  '79a125e8-cd45-4c13-8a67-188112f4dd22': { name: 'Emma', gender: 'female', style: 'soft', age: 'young' },\n  'f146dcec-1681-4b68-9d95-c5ea58ba1b96': { name: 'Luna', gender: 'female', style: 'mystical', age: 'adult' },\n  \n  // Male voices\n  'b7d50908-b17c-442d-ad8d-810c63997ed9': { name: 'David', gender: 'male', style: 'strong', age: 'adult' },\n  '820a3788-2b37-4d21-847a-b65d8a68c99a': { name: 'Marcus', gender: 'male', style: 'deep', age: 'mature' },\n  'f9836c6e-a0bd-460e-9d3c-f7299fa60f72': { name: 'Narrator', gender: 'male', style: 'narrator', age: 'mature' }\n};\n\n// Character analysis and voice matching logic\nfunction analyzeCharacter(character) {\n  const name = character.name.toLowerCase();\n  const lineCount = character.line_count || 0;\n  \n  // Gender inference\n  const femaleNames = ['sarah', 'emma', 'luna', 'anna', 'mary', 'jane', 'alice', 'lily'];\n  const maleNames = ['david', 'marcus', 'john', 'mike', 'alex', 'tom', 'james', 'robert'];\n  \n  let inferredGender = 'neutral';\n  if (femaleNames.some(fn => name.includes(fn))) {\n    inferredGender = 'female';\n  } else if (maleNames.some(mn => name.includes(mn))) {\n    inferredGender = 'male';\n  }\n  \n  // Role analysis\n  const isNarrator = name.includes('narrator') || name.includes('voice');\n  const isMainCharacter = lineCount > 10;\n  \n  return {\n    gender: inferredGender,\n    isNarrator,\n    isMainCharacter,\n    lineCount\n  };\n}\n\n// Auto-assign voices\nconst assignments = input.characters.map(character => {\n  const analysis = analyzeCharacter(character);\n  \n  // Find suitable voice\n  let selectedVoiceId = 'a0e99841-438c-4a64-b679-ae26e5e21b35'; // Default to Sarah\n  \n  if (analysis.isNarrator) {\n    selectedVoiceId = 'f9836c6e-a0bd-460e-9d3c-f7299fa60f72'; // Narrator\n  } else if (analysis.gender === 'female') {\n    if (analysis.isMainCharacter) {\n      selectedVoiceId = 'a0e99841-438c-4a64-b679-ae26e5e21b35'; // Sarah (warm)\n    } else {\n      selectedVoiceId = '79a125e8-cd45-4c13-8a67-188112f4dd22'; // Emma (soft)\n    }\n  } else if (analysis.gender === 'male') {\n    if (analysis.isMainCharacter) {\n      selectedVoiceId = 'b7d50908-b17c-442d-ad8d-810c63997ed9'; // David (strong)\n    } else {\n      selectedVoiceId = '820a3788-2b37-4d21-847a-b65d8a68c99a'; // Marcus (deep)\n    }\n  }\n  \n  const selectedVoice = voiceLibrary[selectedVoiceId];\n  \n  return {\n    script_id: input.script_id,\n    production_id: input.production_id || null,\n    character_name: character.name,\n    cartesia_voice_id: selectedVoiceId,\n    voice_name: selectedVoice.name,\n    voice_settings: {},\n    emotion_mappings: {},\n    default_emotion: 'neutral',\n    lines_count: character.line_count || 0,\n    total_duration: 0\n  };\n});\n\nreturn {\n  json: {\n    assignments,\n    script_id: input.script_id,\n    production_id: input.production_id,\n    analysis_summary: {\n      total_characters: assignments.length,\n      female_voices: assignments.filter(a => voiceLibrary[a.cartesia_voice_id].gender === 'female').length,\n      male_voices: assignments.filter(a => voiceLibrary[a.cartesia_voice_id].gender === 'male').length,\n      narrator_voices: assignments.filter(a => voiceLibrary[a.cartesia_voice_id].style === 'narrator').length\n    }\n  }\n};"
+      },
+      "id": "auto-assign-logic",
+      "name": "Auto Assign Logic",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 900]
+    }
+  ],
+  "connections": {
+    "Line Preview Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate Line Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Voice Assignments": {
+      "main": [
+        [
+          {
+            "node": "Get Assignments from DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Voice Assignments": {
+      "main": [
+        [
+          {
+            "node": "Process Save Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto Assign Voices": {
+      "main": [
+        [
+          {
+            "node": "Auto Assign Logic",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Save Request": {
+      "main": [
+        [
+          {
+            "node": "Save Assignments to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-01-15T16:50:00.000Z",
+      "updatedAt": "2025-01-15T16:50:00.000Z",
+      "id": "enhanced-cartesia",
+      "name": "Enhanced Cartesia"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-15T16:50:00.000Z",
+  "versionId": "1"
+}

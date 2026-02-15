@@ -1,0 +1,512 @@
+import React, { useState, useEffect, useCallback } from 'react';
+import { Volume2, Wand2, Play, User, Mic, Check, Pause, ChevronRight, ArrowLeft } from 'lucide-react';
+import {
+  getVoiceById,
+  getVoicesByFilter,
+  previewVoiceOnLine,
+  getVoiceAssignments,
+  saveVoiceAssignments,
+  autoAssignVoices
+} from '../services/cartesiaVoiceService';
+import { saveScriptToDatabase } from '../services/scriptSaveService';
+
+const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsChange }) => {
+  const [voiceAssignments, setVoiceAssignments] = useState({});
+  const [selectedCharacter, setSelectedCharacter] = useState(null);
+  const [isAutoAssigning, setIsAutoAssigning] = useState(false);
+  const [voiceFilter, setVoiceFilter] = useState({ gender: '', style: '' });
+  const [playingVoice, setPlayingVoice] = useState(null);
+  // Mobile: which panel is showing — 'characters' or 'voices'
+  const [mobilePanel, setMobilePanel] = useState('characters');
+
+  // Load voice assignments from database
+  const loadVoiceAssignments = useCallback(async () => {
+    if (!script?.id || !user?.id) return;
+
+    try {
+      const assignments = await getVoiceAssignments(script.id, user.id);
+      setVoiceAssignments(assignments);
+      onVoiceAssignmentsChange?.(assignments);
+    } catch (error) {
+      console.error('Error loading voice assignments:', error);
+    }
+  }, [script?.id, user?.id, onVoiceAssignmentsChange]);
+
+  // Load voice assignments when script changes
+  useEffect(() => {
+    if (script?.id && user?.id) {
+      loadVoiceAssignments();
+    }
+  }, [script?.id, user?.id, loadVoiceAssignments]);
+
+  // Save voice assignments to database
+  const saveVoiceAssignmentsToDb = async (assignments) => {
+    if (!script?.id || !user?.id) return;
+
+    try {
+      const result = await saveVoiceAssignments(script.id, assignments, user.id);
+      if (result.success) {
+        console.log('✅ Voice assignments saved successfully');
+        onVoiceAssignmentsChange?.(assignments);
+      } else {
+        throw new Error(result.error);
+      }
+    } catch (error) {
+      console.error('Error saving voice assignments:', error);
+      alert(`Error saving voice assignments: ${error.message}`);
+    }
+  };
+
+  // Auto-assign voices based on character analysis
+  const handleAutoAssignVoices = async () => {
+    setIsAutoAssigning(true);
+    try {
+      const characters = getUniqueCharacters();
+      console.log('🎭 Sending characters for auto-assign:', characters);
+
+      // Auto-save script if it doesn't have an ID (same logic as ScriptEditorScreen)
+      let scriptId = script?.id;
+      if (!scriptId) {
+        console.log('💾 Script not saved yet, auto-saving before voice assignment...');
+
+        const scriptData = {
+          id: crypto.randomUUID(),
+          title: script?.title || 'Untitled Script',
+          lines: scriptLines,
+          metadata: {
+            ...script?.metadata,
+            charactersCount: [...new Set(scriptLines.map(line => line.speaker))].length,
+            dialogueCount: scriptLines.filter(line => line.type === 'dialogue').length,
+            narrationCount: scriptLines.filter(line => line.type === 'narration').length,
+            totalLines: scriptLines.length,
+            generatedAt: script?.metadata?.generatedAt || new Date().toISOString()
+          }
+        };
+
+        const result = await saveScriptToDatabase(scriptData, user.id);
+
+        if (result.success) {
+          console.log('✅ Script auto-saved with ID:', scriptData.id);
+          scriptId = scriptData.id;
+          // Update the script object for future use
+          script.id = scriptData.id;
+        } else {
+          throw new Error(result.error || 'Failed to auto-save script before voice assignment');
+        }
+      }
+
+      console.log('🔍 Using script ID for auto-assign:', scriptId);
+      const response = await autoAssignVoices(scriptId, user.id, characters);
+      console.log('✅ Auto-assign response:', response);
+
+      // Parse the n8n webhook response format
+      const assignments = {};
+
+      // Handle the actual response format with "object Object" key
+      const responseData = response['object Object'];
+      if (responseData && responseData.success && responseData.data && responseData.data.assignments) {
+        // Convert assignments array to character -> voice mapping
+        responseData.data.assignments.forEach(assignment => {
+          assignments[assignment.character_name] = assignment.cartesia_voice_id;
+        });
+        console.log('✅ Converted assignments:', assignments);
+      }
+
+      // Fallback: try array format
+      else if (Array.isArray(response) && response.length > 0) {
+        const result = response[0];
+        if (result.success && result.data && result.data.assignments) {
+          result.data.assignments.forEach(assignment => {
+            assignments[assignment.character_name] = assignment.cartesia_voice_id;
+          });
+          console.log('✅ Converted assignments (fallback):', assignments);
+        }
+      }
+
+      if (Object.keys(assignments).length > 0) {
+        setVoiceAssignments(assignments);
+        onVoiceAssignmentsChange?.(assignments);
+        console.log('✅ Voice assignments updated in UI');
+      } else {
+        console.warn('⚠️ No assignments found in response');
+      }
+
+    } catch (error) {
+      console.error('❌ Error auto-assigning voices:', error);
+    } finally {
+      setIsAutoAssigning(false);
+    }
+  };
+
+  // Assign voice to character
+  const assignVoiceToCharacter = async (characterName, voiceId) => {
+    const newAssignments = {
+      ...voiceAssignments,
+      [characterName]: voiceId
+    };
+    setVoiceAssignments(newAssignments);
+    await saveVoiceAssignmentsToDb(newAssignments);
+  };
+
+  // Handle voice preview
+  const handleVoicePreview = async (voiceId, characterName) => {
+    try {
+      setPlayingVoice(voiceId);
+      const sampleLine = scriptLines.find(line => line.speaker === characterName);
+      if (sampleLine) {
+        await previewVoiceOnLine(voiceId, sampleLine.text, characterName, user.id, script.id);
+      }
+      // Simulate audio duration
+      setTimeout(() => setPlayingVoice(null), 2000);
+    } catch (error) {
+      console.error('Error previewing voice:', error);
+      setPlayingVoice(null);
+    }
+  };
+
+  // Handle Save & Continue
+  const handleSaveAndContinue = async () => {
+    try {
+      // Save current voice assignments to database
+      await saveVoiceAssignmentsToDb(voiceAssignments);
+
+      // Call parent callback to proceed to next step
+      if (onVoiceAssignmentsChange) {
+        onVoiceAssignmentsChange(voiceAssignments);
+      }
+
+      // Show success message and scroll to audio generation section
+      console.log('✅ Voice assignments saved and continuing');
+
+      // Scroll to the "Generate Full Audio" button
+      const audioButton = document.querySelector('[data-audio-generation]');
+      if (audioButton) {
+        audioButton.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        // Briefly highlight the button
+        audioButton.classList.add('ring-4', 'ring-dream-glow', 'ring-opacity-75');
+        setTimeout(() => {
+          audioButton.classList.remove('ring-4', 'ring-dream-glow', 'ring-opacity-75');
+        }, 2000);
+      }
+
+    } catch (error) {
+      console.error('❌ Error saving voice assignments:', error);
+    }
+  };
+
+  // When user taps a character on mobile, switch to voices panel
+  const handleCharacterTapMobile = (charName) => {
+    setSelectedCharacter(charName);
+    setMobilePanel('voices');
+  };
+
+  // Get unique characters from script WITH GENDER from Gemini if available
+  const getUniqueCharacters = () => {
+    // Extract unique speakers
+    const uniqueSpeakers = [...new Set(scriptLines.map(line => line.speaker))];
+
+    // Try to get character metadata from script (Gemini provides this)
+    const charactersWithMetadata = script?.metadata?.characters || [];
+
+    // If we have Gemini character metadata with gender, use it
+    if (charactersWithMetadata.length > 0) {
+      console.log('✅ Using Gemini character metadata with gender');
+      return charactersWithMetadata;
+    }
+
+    // Fallback: return just character names (n8n will infer gender)
+    console.log('⚠️ No character metadata found, returning names only');
+    return uniqueSpeakers;
+  };
+
+  // Calculate progress
+  const characters = getUniqueCharacters();
+  // Handle both character objects (with .name) and simple strings
+  const assignedCount = characters.filter(char => {
+    const charName = typeof char === 'string' ? char : char.name;
+    return voiceAssignments[charName];
+  }).length;
+  const allAssigned = characters.length > 0 && assignedCount === characters.length;
+  const progressPercent = characters.length > 0 ? (assignedCount / characters.length) * 100 : 0;
+
+  /* ─────────────────────────────────────────────
+     Characters Panel — shared between mobile & desktop
+     ───────────────────────────────────────────── */
+  const CharactersPanel = ({ onCharacterTap }) => (
+    <div className="bg-cream-100/60 border-2 border-cream-300/40 rounded-2xl p-4">
+      <h3 className="font-display font-bold text-sm mb-3 flex items-center gap-2 text-sleep-900">
+        <User size={16} className="text-dream-glow" />
+        Characters
+      </h3>
+      <div className="space-y-2">
+        {characters.map(character => {
+          const charName = typeof character === 'string' ? character : character.name;
+          const assignedVoice = getVoiceById(voiceAssignments[charName]);
+          const lineCount = scriptLines.filter(line => line.speaker === charName).length;
+
+          return (
+            <button
+              key={charName}
+              onClick={() => onCharacterTap(charName)}
+              className={`w-full text-left p-4 rounded-2xl transition-all active:scale-[0.98] ${selectedCharacter === charName
+                  ? 'bg-dream-stardust/30 border-2 border-dream-glow/30'
+                  : 'bg-white/60 border-2 border-cream-300/30 hover:border-cream-400'
+                }`}
+            >
+              <div className="flex justify-between items-center">
+                <div className="flex-1 min-w-0">
+                  <div className="font-display font-semibold text-base text-sleep-900">{charName}</div>
+                  <div className="text-xs text-sleep-400 font-body mt-0.5">{lineCount} lines</div>
+                </div>
+                <div className="flex items-center gap-2 ml-3 shrink-0">
+                  {assignedVoice ? (
+                    <>
+                      <span className="text-xs font-display font-semibold text-success max-w-[100px] truncate">
+                        {assignedVoice.name}
+                      </span>
+                      <Check size={16} className="text-success" />
+                    </>
+                  ) : (
+                    <ChevronRight size={16} className="text-sleep-400" />
+                  )}
+                </div>
+              </div>
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  /* ─────────────────────────────────────────────
+     Voices Panel — shared between mobile & desktop
+     ───────────────────────────────────────────── */
+  const VoicesPanel = () => (
+    <div className="bg-cream-100/60 border-2 border-cream-300/40 rounded-2xl p-4">
+      {/* Mobile back button */}
+      <div className="md:hidden mb-3">
+        <button
+          onClick={() => setMobilePanel('characters')}
+          className="flex items-center gap-1.5 text-sleep-500 font-display font-semibold text-sm active:scale-[0.97]"
+        >
+          <ArrowLeft size={16} />
+          Back to Characters
+        </button>
+      </div>
+
+      <h3 className="font-display font-bold text-sm mb-1 flex items-center gap-2 text-sleep-900">
+        <Mic size={16} className="text-dream-glow" />
+        {selectedCharacter ? (
+          <>Voices for <span className="text-dream-glow">{selectedCharacter}</span></>
+        ) : (
+          'Available Voices'
+        )}
+      </h3>
+      {selectedCharacter && (
+        <p className="text-xs text-sleep-400 font-body mb-3">Tap a voice to assign it</p>
+      )}
+
+      {/* Filters — stacked on mobile for comfortable tapping */}
+      <div className="flex flex-col sm:flex-row gap-2 mb-3">
+        <select
+          value={voiceFilter.gender}
+          onChange={(e) => setVoiceFilter(prev => ({ ...prev, gender: e.target.value }))}
+          className="w-full sm:w-auto px-4 py-3 sm:py-1.5 bg-white/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 text-sm font-display font-semibold focus:outline-none focus:border-dream-glow/50 transition-all"
+        >
+          <option value="">All Genders</option>
+          <option value="female">Female</option>
+          <option value="male">Male</option>
+          <option value="neutral">Neutral</option>
+        </select>
+        <select
+          value={voiceFilter.style}
+          onChange={(e) => setVoiceFilter(prev => ({ ...prev, style: e.target.value }))}
+          className="w-full sm:w-auto px-4 py-3 sm:py-1.5 bg-white/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 text-sm font-display font-semibold focus:outline-none focus:border-dream-glow/50 transition-all"
+        >
+          <option value="">All Styles</option>
+          <option value="warm">Warm</option>
+          <option value="professional">Professional</option>
+          <option value="youthful">Youthful</option>
+          <option value="mature">Mature</option>
+          <option value="narrator">Narrator</option>
+          <option value="character">Character</option>
+        </select>
+      </div>
+
+      {/* Voice List — larger touch targets on mobile */}
+      <div className="space-y-2 max-h-[60vh] md:max-h-96 overflow-y-auto -mx-1 px-1">
+        {getVoicesByFilter(voiceFilter).map(voice => {
+          const isCurrentAssignment = selectedCharacter && voiceAssignments[selectedCharacter] === voice.id;
+
+          return (
+            <div
+              key={voice.id}
+              className={`p-4 rounded-2xl transition-all border-2 ${isCurrentAssignment
+                  ? 'bg-success/10 border-success/30'
+                  : 'bg-white/60 border-cream-300/30 hover:border-cream-400'
+                }`}
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+                {/* Voice info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <div className="font-display font-semibold text-base text-sleep-900">{voice.name}</div>
+                    {isCurrentAssignment && (
+                      <span className="text-[10px] bg-success/20 text-success px-2 py-0.5 rounded-full font-display font-bold">ASSIGNED</span>
+                    )}
+                  </div>
+                  <div className="text-xs text-sleep-400 font-body mt-0.5 line-clamp-1">{voice.description}</div>
+                  <div className="flex gap-1.5 mt-2">
+                    <span className="text-[11px] px-2.5 py-1 bg-cream-200 text-sleep-500 rounded-lg font-display font-semibold capitalize">
+                      {voice.gender}
+                    </span>
+                    <span className="text-[11px] px-2.5 py-1 bg-cream-200 text-sleep-500 rounded-lg font-display font-semibold capitalize">
+                      {voice.style}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Action buttons — full width on mobile */}
+                <div className="flex gap-2 sm:shrink-0">
+                  <button
+                    onClick={() => handleVoicePreview(voice.id, selectedCharacter || (typeof characters[0] === 'string' ? characters[0] : characters[0]?.name))}
+                    disabled={playingVoice === voice.id}
+                    className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-3 sm:py-2 rounded-xl font-display font-semibold text-xs transition-all active:scale-[0.97] ${playingVoice === voice.id
+                        ? 'bg-dream-glow/20 text-dream-glow'
+                        : 'bg-cream-200 hover:bg-cream-300 text-sleep-600'
+                      }`}
+                  >
+                    {playingVoice === voice.id ? (
+                      <><Pause size={14} /> Playing…</>
+                    ) : (
+                      <><Play size={14} /> Preview</>
+                    )}
+                  </button>
+                  {selectedCharacter && (
+                    <button
+                      onClick={() => assignVoiceToCharacter(selectedCharacter, voice.id)}
+                      className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-3 sm:py-2 rounded-xl text-xs font-display font-bold transition-all active:scale-[0.97] ${isCurrentAssignment
+                          ? 'bg-success text-white'
+                          : 'bg-dream-glow text-white hover:bg-dream-aurora shadow-glow-sm'
+                        }`}
+                    >
+                      {isCurrentAssignment ? (
+                        <><Check size={14} /> Assigned</>
+                      ) : (
+                        <>Assign ✨</>
+                      )}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+
+  /* ─────────────────────────────────────────────
+     Preview Section
+     ───────────────────────────────────────────── */
+  const PreviewSection = () => {
+    if (!selectedCharacter) return null;
+
+    return (
+      <div className="mt-4 p-4 bg-cream-100/60 border-2 border-cream-300/40 rounded-2xl">
+        <h4 className="font-display font-bold text-sm mb-2 text-sleep-900">Preview: {selectedCharacter}</h4>
+        <p className="text-xs text-sleep-500 mb-3 font-body italic leading-relaxed">
+          "{scriptLines.find(line => line.speaker === selectedCharacter)?.text || 'No sample text available'}"
+        </p>
+        {voiceAssignments[selectedCharacter] && (
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-2">
+              <Volume2 size={16} className="text-sleep-400" />
+              <span className="text-sm text-sleep-900 font-display font-semibold">
+                {getVoiceById(voiceAssignments[selectedCharacter])?.name}
+              </span>
+            </div>
+            <button
+              onClick={() => handleVoicePreview(voiceAssignments[selectedCharacter], selectedCharacter)}
+              disabled={playingVoice === voiceAssignments[selectedCharacter]}
+              className="w-full sm:w-auto px-4 py-3 sm:py-2 bg-success text-white rounded-xl text-xs font-display font-bold hover:bg-success/80 transition-all disabled:opacity-50 active:scale-[0.97] flex items-center justify-center gap-1.5"
+            >
+              <Play size={14} />
+              {playingVoice === voiceAssignments[selectedCharacter] ? 'Playing…' : 'Play Preview'}
+            </button>
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  return (
+    <div className="w-full max-w-6xl mx-auto p-4 sm:p-5 bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl shadow-card">
+      {/* Header */}
+      <div className="mb-4 sm:mb-5">
+        <h2 className="text-lg sm:text-xl font-display font-bold text-sleep-900 mb-2">Voice Assignment</h2>
+        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
+          <p className="text-sleep-500 text-sm font-body">Assign voices to your characters</p>
+          <div className="flex gap-2">
+            <button
+              onClick={handleAutoAssignVoices}
+              disabled={isAutoAssigning}
+              className={`flex-1 sm:flex-none px-4 py-3 sm:py-2 rounded-xl font-display font-semibold text-sm sm:text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] ${isAutoAssigning
+                  ? 'bg-cream-300/50 text-sleep-400 cursor-not-allowed'
+                  : 'bg-pastel-lavender text-white hover:bg-pastel-lavender/80'
+                }`}
+            >
+              <Wand2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              {isAutoAssigning ? 'Assigning…' : 'Auto-Assign'}
+            </button>
+            <button
+              onClick={handleSaveAndContinue}
+              disabled={!allAssigned}
+              className={`flex-1 sm:flex-none px-4 py-3 sm:py-2 rounded-xl font-display font-semibold text-sm sm:text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] ${allAssigned
+                  ? 'bg-success text-white hover:bg-success/80'
+                  : 'bg-cream-200 text-sleep-400 cursor-not-allowed'
+                }`}
+            >
+              <Check className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
+              Save & Continue
+            </button>
+          </div>
+        </div>
+        {/* Progress bar */}
+        <div className="mt-3 bg-cream-200 rounded-full h-2.5 sm:h-2 overflow-hidden">
+          <div
+            className="bg-success h-full rounded-full transition-all duration-300"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+        <div className="text-xs text-sleep-400 mt-1 font-body">{assignedCount}/{characters.length} characters assigned</div>
+      </div>
+
+      {/* ── MOBILE LAYOUT: Toggle between panels ── */}
+      <div className="block md:hidden">
+        {mobilePanel === 'characters' ? (
+          <>
+            <CharactersPanel onCharacterTap={handleCharacterTapMobile} />
+            <PreviewSection />
+          </>
+        ) : (
+          <>
+            <VoicesPanel />
+            <PreviewSection />
+          </>
+        )}
+      </div>
+
+      {/* ── DESKTOP / TABLET LAYOUT: Side-by-side grid ── */}
+      <div className="hidden md:grid md:grid-cols-2 gap-5">
+        <CharactersPanel onCharacterTap={(charName) => setSelectedCharacter(charName)} />
+        <VoicesPanel />
+      </div>
+      <div className="hidden md:block">
+        <PreviewSection />
+      </div>
+    </div>
+  );
+};
+
+export default VoiceAssignmentPanel;

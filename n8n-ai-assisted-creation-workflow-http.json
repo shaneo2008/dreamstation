@@ -1,0 +1,552 @@
+{
+  "name": "FanCast AI - AI-Assisted Script Creation (HTTP)",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-assisted-creation",
+        "responseMode": "responseNode"
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "const payload = $input.first().json;\nconsole.log('Received payload:', JSON.stringify(payload, null, 2));\n\n// Support both field naming conventions\nconst userId = payload.user_id || payload.userId;\nconst storyId = payload.story_id || payload.storyId;\n\nif (!userId || !storyId || !payload.concept?.initialConcept) {\n  throw new Error('Missing required fields: user_id, story_id, concept.initialConcept');\n}\n\n// Extract optimized prompt if available\nconst optimizedPrompt = payload.optimized_prompt || '';\nconst concept = payload.concept || {};\n\nconsole.log('Using optimized prompt:', optimizedPrompt ? 'YES' : 'NO');\nconsole.log('Concept:', concept.initialConcept);\n\nconst jobId = `ai_create_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;\nreturn {\n  jobId,\n  userId,\n  storyId,\n  concept: payload.concept,\n  optimizedPrompt,\n  characters: payload.characters || [],\n  preferences: payload.preferences || {},\n  generation_metadata: payload.generation_metadata || {}\n};"
+      },
+      "id": "validate-input",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [460, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://fancastai.supabase.co/rest/v1/users",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "email",
+              "value": "test@example.com"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "create-user",
+      "name": "Create User",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      },
+      "continueOnFail": true
+    },
+    {
+      "parameters": {
+        "url": "https://fancastai.supabase.co/rest/v1/story_concepts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "story_id", 
+              "value": "={{ $json.storyId }}"
+            },
+            {
+              "name": "initial_concept",
+              "value": "={{ $json.concept.initialConcept }}"
+            },
+            {
+              "name": "genre",
+              "value": "={{ $json.concept.genre || 'drama' }}"
+            },
+            {
+              "name": "target_episodes",
+              "value": "={{ $json.concept.targetEpisodes || 1 }}"
+            },
+            {
+              "name": "episode_length_minutes",
+              "value": "={{ $json.concept.episodeLengthMinutes || 10 }}"
+            },
+            {
+              "name": "development_stage",
+              "value": "concept"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "create-story-concept",
+      "name": "Create Story Concept",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://fancastai.supabase.co/rest/v1/ai_generation_jobs",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $('validate-input').first().json.userId }}"
+            },
+            {
+              "name": "story_id",
+              "value": "={{ $('validate-input').first().json.storyId }}"
+            },
+            {
+              "name": "creation_type",
+              "value": "ai_assisted_creation"
+            },
+            {
+              "name": "story_concept_id",
+              "value": "={{ $json[0].id }}"
+            },
+            {
+              "name": "status",
+              "value": "processing"
+            },
+            {
+              "name": "progress",
+              "value": "10"
+            },
+            {
+              "name": "current_step",
+              "value": "Starting AI development"
+            }
+          ]
+        }
+      },
+      "id": "create-generation-job",
+      "name": "Create Generation Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [900, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "gpt-4",
+        "messages": {
+          "values": [
+            {
+              "role": "system",
+              "content": "Create an audio drama script. Return ONLY valid JSON in this exact format:\n{\n  \"expandedConcept\": \"detailed story expansion\",\n  \"characters\": [{\"name\": \"Character Name\", \"personality\": \"traits\", \"voice\": \"description\"}],\n  \"script\": {\n    \"title\": \"Story Title\",\n    \"lines\": [\n      {\"type\": \"dialogue\", \"speaker\": \"Character Name\", \"text\": \"dialogue text\", \"emotion\": \"Happy\"},\n      {\"type\": \"narration\", \"speaker\": \"Narrator\", \"text\": \"scene description\", \"emotion\": \"Neutral\"}\n    ]\n  }\n}\nAvailable emotions: Whisper, Shout, Happy, Sad, Angry, Scared, Excited, Neutral"
+            },
+            {
+              "role": "user",
+              "content": "{{ $('validate-input').first().json.optimizedPrompt || ('Create an audio drama script from this concept: ' + $('validate-input').first().json.concept.initialConcept + '. Genre: ' + ($('validate-input').first().json.concept.genre || 'drama') + '. Target Length: ' + ($('validate-input').first().json.concept.episodeLengthMinutes || 10) + ' minutes') }}"
+            }
+          ]
+        },
+        "options": {
+          "temperature": 0.7,
+          "maxTokens": 2500
+        }
+      },
+      "id": "ai-script-creation",
+      "name": "AI Script Creation",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [1120, 400],
+      "credentials": {
+        "openAiApi": {
+          "id": "openai-credentials",
+          "name": "OpenAI API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const rawResponse = $input.first().json.message.content;\nconst jobData = $('validate-input').first().json;\n\nconsole.log('AI Response received:', rawResponse);\nconsole.log('AI Response length:', rawResponse ? rawResponse.length : 'null/undefined');\n\n// Check if AI response is empty\nif (!rawResponse || rawResponse.trim() === '') {\n  throw new Error('AI returned empty response. Check OpenAI API credentials and model access.');\n}\n\ntry {\n  const aiResponse = JSON.parse(rawResponse);\n  \n  // Validate AI response structure\n  if (!aiResponse.script || !aiResponse.script.lines) {\n    throw new Error(`Invalid AI response structure. Expected script.lines, got: ${Object.keys(aiResponse)}`);\n  }\n  \n  // Create script record\n  const scriptRecord = {\n    story_id: jobData.storyId,\n    title: aiResponse.script.title || 'AI Generated Script',\n    generation_method: 'ai_assisted',\n    ai_generation_job_id: jobData.jobId\n  };\n  \n  // Process script lines\n  const scriptLines = aiResponse.script.lines.map((line, index) => ({\n    line_number: index + 1,\n    type: line.type || 'dialogue',\n    speaker: line.speaker || 'Unknown',\n    text: line.text || '[Empty line]',\n    emotion: line.emotion || 'Neutral',\n    ai_generated: true,\n    ai_confidence: 0.85,\n    needs_review: !line.text || line.text.trim() === ''\n  }));\n  \n  console.log(`Successfully processed AI response: ${scriptLines.length} lines`);\n  \n  return { scriptRecord, scriptLines, aiResponse };\n  \n} catch (parseError) {\n  console.error('Failed to parse AI response as JSON:', parseError.message);\n  console.error('Raw AI response:', rawResponse);\n  throw new Error(`Failed to parse AI response as JSON: ${parseError.message}. Raw response: ${rawResponse.substring(0, 500)}...`);\n}"
+      },
+      "id": "process-ai-response",
+      "name": "Process AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1340, 400]
+    },
+    {
+      "parameters": {
+        "url": "https://fancastai.supabase.co/rest/v1/scripts",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "story_id",
+              "value": "={{ $json.scriptRecord.story_id }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $json.scriptRecord.title }}"
+            },
+            {
+              "name": "generation_method",
+              "value": "={{ $json.scriptRecord.generation_method }}"
+            },
+            {
+              "name": "ai_generation_job_id",
+              "value": "={{ $json.scriptRecord.ai_generation_job_id }}"
+            }
+          ]
+        }
+      },
+      "id": "create-script",
+      "name": "Create Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1560, 300],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Prepare script lines for bulk insert\nconst scriptId = $('create-script').first().json[0].id;\nconst scriptLines = $('process-ai-response').first().json.scriptLines;\n\n// Add script_id to each line\nconst linesWithScriptId = scriptLines.map(line => ({\n  ...line,\n  script_id: scriptId\n}));\n\nreturn linesWithScriptId;"
+      },
+      "id": "prepare-script-lines",
+      "name": "Prepare Script Lines",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1560, 500]
+    },
+    {
+      "parameters": {
+        "url": "https://fancastai.supabase.co/rest/v1/script_lines",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "contentType": "json",
+        "body": "={{ JSON.stringify($json) }}"
+      },
+      "id": "create-script-lines",
+      "name": "Create Script Lines",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [1780, 500],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://fancastai.supabase.co/rest/v1/ai_generation_jobs?id=eq.{{ $('create-generation-job').first().json[0].id }}",
+        "method": "PATCH",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "completed"
+            },
+            {
+              "name": "progress",
+              "value": "100"
+            },
+            {
+              "name": "current_step",
+              "value": "AI-assisted creation completed"
+            },
+            {
+              "name": "script_id",
+              "value": "={{ $('create-script').first().json[0].id }}"
+            },
+            {
+              "name": "completed_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        }
+      },
+      "id": "complete-job",
+      "name": "Complete Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [2000, 400],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "supabase-auth",
+          "name": "Supabase Auth"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{ JSON.stringify({\n  success: true,\n  message: 'AI-assisted script creation completed',\n  data: {\n    jobId: $('validate-input').first().json.jobId,\n    scriptId: $('create-script').first().json[0].id,\n    totalLines: $('process-ai-response').first().json.scriptLines.length,\n    title: $('process-ai-response').first().json.scriptRecord.title,\n    editUrl: `https://fancast.ai/script-editor/${$('create-script').first().json[0].id}`\n  }\n}) }}"
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2220, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\n  \"success\": true,\n  \"message\": \"AI-assisted script creation completed\",\n  \"data\": {\n    \"jobId\": \"{{ $('Complete Job').item.json.id }}\",\n    \"scriptId\": \"{{ $('Create Script').item.json.id }}\",\n    \"totalLines\": {{ $('Create Script Lines').item.json.length || 0 }},\n    \"title\": \"{{ $('Create Script').item.json.title }}\",\n    \"editUrl\": \"https://fancast.ai/script-editor/{{ $('Create Script').item.json.id }}\"\n  }\n}"
+      },
+      "id": "success-response",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2000, 300]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Create User",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create User": {
+      "main": [
+        [
+          {
+            "node": "Create Story Concept",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Story Concept": {
+      "main": [
+        [
+          {
+            "node": "Create Generation Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Generation Job": {
+      "main": [
+        [
+          {
+            "node": "AI Script Creation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Script Creation": {
+      "main": [
+        [
+          {
+            "node": "Process AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process AI Response": {
+      "main": [
+        [
+          {
+            "node": "Create Script",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Prepare Script Lines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Script": {
+      "main": [
+        [
+          {
+            "node": "Complete Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Script Lines": {
+      "main": [
+        [
+          {
+            "node": "Create Script Lines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Script Lines": {
+      "main": [
+        [
+          {
+            "node": "Complete Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Job": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {"executionOrder": "v1"},
+  "tags": ["fancast", "ai-assisted", "script-creation", "http"]
+}

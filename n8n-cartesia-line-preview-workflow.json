@@ -1,0 +1,241 @@
+{
+  "name": "Cartesia Line Preview TTS Workflow",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cartesia-line-preview",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "cartesia-line-preview"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Cartesia Line Preview - Input Validation & Processing\n// This node validates the incoming payload and prepares data for TTS generation\n\n// Get input data - handle different n8n webhook data structures\nlet input = $input.all()[0].json;\n\n// Check if data is nested in 'body' (common in n8n webhooks)\nif (input.body) {\n  input = input.body;\n}\n\nconsole.log('📥 Received Line Preview Request:', JSON.stringify(input, null, 2));\nconsole.log('📥 Input keys:', Object.keys(input));\n\n// Validate required fields\nif (!input.line_data || !input.line_data.text || !input.line_data.speaker) {\n  console.log('❌ line_data structure:', input.line_data);\n  throw new Error('❌ Missing required fields: line_data.text and line_data.speaker are required');\n}\n\nif (!input.user_id) {\n  console.log('❌ Available input keys:', Object.keys(input));\n  throw new Error('❌ Missing required field: user_id is required');\n}\n\n// Extract line data\nconst lineData = input.line_data;\nconst userId = input.user_id;\nconst scriptId = input.script_id || 'preview-script';\nconst lineId = input.line_id || 'preview-line';\n\n// Voice mapping: FanCast voices to Cartesia voices\nconst voiceMapping = {\n  'standard-female-1': 'a0e99841-438c-4a64-b679-ae26e5e21b35', // Sarah (Warm)\n  'standard-male-1': 'b7d50908-b17c-442d-ad8d-810c63997ed9',   // David (Strong)\n  'standard-female-2': '79a125e8-cd45-4c13-8a67-188112f4dd22', // Emma (Soft)\n  'standard-male-2': '820a3788-2b37-4d21-847a-b65d8a68c99a',   // Marcus (Deep)\n  'premium-narrator': 'f9836c6e-a0bd-460e-9d3c-f7299fa60f72'   // Premium Narrator\n};\n\n// Emotion mapping: FanCast emotions to Cartesia parameters\nconst emotionMapping = {\n  'neutral': { speed: 1.0, emotion: 'neutral' },\n  'happy': { speed: 1.1, emotion: 'happy' },\n  'sad': { speed: 0.9, emotion: 'sad' },\n  'angry': { speed: 1.2, emotion: 'angry' },\n  'scared': { speed: 1.3, emotion: 'fear' },\n  'excited': { speed: 1.15, emotion: 'excited' },\n  'whisper': { speed: 0.8, emotion: 'whisper' },\n  'shout': { speed: 1.2, emotion: 'shouting' }\n};\n\n// Get primary emotion (first annotation or default to neutral)\nconst primaryEmotion = lineData.annotations && lineData.annotations.length > 0 \n  ? lineData.annotations[0] \n  : 'neutral';\n\n// Get voice settings\nconst voiceId = input.voice_settings?.voice_id || 'standard-female-1';\nconst cartesiaVoiceId = voiceMapping[voiceId] || voiceMapping['standard-female-1'];\nconst emotionSettings = emotionMapping[primaryEmotion] || emotionMapping['neutral'];\n\n// Prepare Cartesia TTS payload\nconst cartesiaPayload = {\n  model_id: 'sonic-english',\n  voice: {\n    mode: 'id',\n    id: cartesiaVoiceId\n  },\n  transcript: lineData.text,\n  output_format: {\n    container: 'wav',\n    encoding: 'pcm_s16le',\n    sample_rate: 22050\n  },\n  language: 'en',\n  speed: emotionSettings.speed,\n  emotion: emotionSettings.emotion\n};\n\n// Generate unique filename for this preview\nconst timestamp = Date.now();\nconst filename = `preview_${userId}_${scriptId}_${lineId}_${timestamp}.wav`;\n\n// Prepare response data\nconst responseData = {\n  success: true,\n  request_id: `preview_${timestamp}`,\n  user_id: userId,\n  script_id: scriptId,\n  line_id: lineId,\n  line_data: lineData,\n  cartesia_payload: cartesiaPayload,\n  filename: filename,\n  voice_info: {\n    fancast_voice_id: voiceId,\n    cartesia_voice_id: cartesiaVoiceId,\n    emotion: primaryEmotion,\n    emotion_settings: emotionSettings\n  },\n  processing_timestamp: new Date().toISOString()\n};\n\nconsole.log('✅ Line Preview Data Processed:', JSON.stringify(responseData, null, 2));\n\nreturn responseData;"
+      },
+      "id": "validate-and-process",
+      "name": "Validate & Process Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cartesia.ai/tts/bytes",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "cartesiaApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cartesia-Version",
+              "value": "2024-06-10"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model_id",
+              "value": "={{ $json.cartesia_payload.model_id }}"
+            },
+            {
+              "name": "transcript",
+              "value": "={{ $json.cartesia_payload.transcript }}"
+            },
+            {
+              "name": "voice",
+              "value": "={{ $json.cartesia_payload.voice }}"
+            },
+            {
+              "name": "output_format",
+              "value": "={{ $json.cartesia_payload.output_format }}"
+            },
+            {
+              "name": "language",
+              "value": "={{ $json.cartesia_payload.language }}"
+            },
+            {
+              "name": "speed",
+              "value": "={{ $json.cartesia_payload.speed }}"
+            },
+            {
+              "name": "emotion",
+              "value": "={{ $json.cartesia_payload.emotion }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "cartesia-tts-call",
+      "name": "Cartesia TTS API Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process Cartesia TTS Response\n// This node handles the audio response from Cartesia and prepares it for S3 upload\n\nconst inputData = $input.all()[0];\nconst audioData = inputData.binary;\nconst jsonData = inputData.json;\n\nconsole.log('🎵 Processing Cartesia TTS Response');\nconsole.log('Audio data keys:', Object.keys(audioData || {}));\nconsole.log('JSON data:', JSON.stringify(jsonData, null, 2));\n\n// Get the audio file data (Cartesia returns binary audio)\nconst audioFile = audioData?.data;\n\nif (!audioFile) {\n  throw new Error('❌ No audio data received from Cartesia TTS API');\n}\n\n// Get metadata from previous node\nconst previousNodeData = $('Validate & Process Input').all()[0].json;\nconst filename = previousNodeData.filename;\nconst requestId = previousNodeData.request_id;\n\n// Prepare data for S3 upload\nconst s3UploadData = {\n  success: true,\n  request_id: requestId,\n  filename: filename,\n  audio_ready: true,\n  audio_size_bytes: audioFile.length || 0,\n  content_type: 'audio/mpeg',\n  s3_key: `previews/${filename}`,\n  processing_completed_at: new Date().toISOString(),\n  metadata: {\n    user_id: previousNodeData.user_id,\n    script_id: previousNodeData.script_id,\n    line_id: previousNodeData.line_id,\n    line_text: previousNodeData.line_data.text,\n    speaker: previousNodeData.line_data.speaker,\n    emotion: previousNodeData.voice_info.emotion,\n    voice_id: previousNodeData.voice_info.fancast_voice_id\n  }\n};\n\nconsole.log('✅ Audio processed successfully:', JSON.stringify(s3UploadData, null, 2));\n\nreturn {\n  json: s3UploadData,\n  binary: {\n    data: audioFile\n  }\n};"
+      },
+      "id": "process-audio-response",
+      "name": "Process Audio Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "bucket": {
+          "__rl": true,
+          "value": "learncast-audio",
+          "mode": "name"
+        },
+        "fileKey": "={{ $json.s3_key }}",
+        "binaryData": true,
+        "options": {
+          "metadata": {
+            "metadataValues": [
+              {
+                "name": "user-id",
+                "value": "={{ $json.metadata.user_id }}"
+              },
+              {
+                "name": "script-id", 
+                "value": "={{ $json.metadata.script_id }}"
+              },
+              {
+                "name": "line-id",
+                "value": "={{ $json.metadata.line_id }}"
+              },
+              {
+                "name": "speaker",
+                "value": "={{ $json.metadata.speaker }}"
+              },
+              {
+                "name": "emotion",
+                "value": "={{ $json.metadata.emotion }}"
+              },
+              {
+                "name": "voice-id",
+                "value": "={{ $json.metadata.voice_id }}"
+              }
+            ]
+          },
+          "contentType": "audio/mpeg",
+          "storageClass": "STANDARD",
+          "acl": "private"
+        }
+      },
+      "id": "s3-upload-preview",
+      "name": "Upload Preview to S3",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [1120, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate Final Response\n// This node creates the final response to send back to the frontend\n\nconst s3Response = $input.all()[0].json;\nconst previousData = $('Process Audio Response').all()[0].json;\n\nconsole.log('📤 Generating final response for Line Preview');\nconsole.log('S3 Response:', JSON.stringify(s3Response, null, 2));\n\n// Generate the preview URL (adjust based on your S3 configuration)\nconst s3Bucket = 'fancast-audio-previews';\nconst s3Key = previousData.s3_key;\nconst previewUrl = `https://${s3Bucket}.s3.amazonaws.com/${s3Key}`;\n\n// Create final response\nconst finalResponse = {\n  success: true,\n  message: 'Line preview generated successfully',\n  data: {\n    request_id: previousData.request_id,\n    preview_url: previewUrl,\n    filename: previousData.filename,\n    audio_duration_estimate: Math.ceil(previousData.metadata.line_text.length / 10), // Rough estimate in seconds\n    metadata: {\n      user_id: previousData.metadata.user_id,\n      script_id: previousData.metadata.script_id,\n      line_id: previousData.metadata.line_id,\n      speaker: previousData.metadata.speaker,\n      emotion: previousData.metadata.emotion,\n      voice_id: previousData.metadata.voice_id,\n      line_text: previousData.metadata.line_text\n    },\n    processing_info: {\n      generated_at: previousData.processing_completed_at,\n      audio_size_bytes: previousData.audio_size_bytes,\n      expires_in_minutes: 5 // Preview expires in 5 minutes\n    }\n  }\n};\n\nconsole.log('✅ Line Preview Response Ready:', JSON.stringify(finalResponse, null, 2));\n\nreturn finalResponse;"
+      },
+      "id": "generate-response",
+      "name": "Generate Final Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1340, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Error Handler\n// This node handles any errors that occur during the workflow\n\nconst error = $input.all()[0].json.error || $input.all()[0].json;\n\nconsole.error('❌ Line Preview Workflow Error:', error);\n\n// Create error response\nconst errorResponse = {\n  success: false,\n  error: {\n    message: error.message || 'An error occurred during line preview generation',\n    type: 'line_preview_error',\n    timestamp: new Date().toISOString(),\n    details: error.stack || error.toString()\n  },\n  data: null\n};\n\nconsole.log('📤 Error Response:', JSON.stringify(errorResponse, null, 2));\n\nreturn errorResponse;"
+      },
+      "id": "error-handler",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [680, 500]
+    }
+  ],
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate & Process Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Process Input": {
+      "main": [
+        [
+          {
+            "node": "Cartesia TTS API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cartesia TTS API Call": {
+      "main": [
+        [
+          {
+            "node": "Process Audio Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Audio Response": {
+      "main": [
+        [
+          {
+            "node": "Upload Preview to S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Preview to S3": {
+      "main": [
+        [
+          {
+            "node": "Generate Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-01-05T13:45:00.000Z",
+      "updatedAt": "2025-01-05T13:45:00.000Z",
+      "id": "cartesia-tts",
+      "name": "Cartesia TTS"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-05T13:45:00.000Z",
+  "versionId": "1"
+}

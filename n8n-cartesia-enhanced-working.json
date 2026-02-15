@@ -1,0 +1,661 @@
+{
+  "name": "Enhanced Cartesia Line Preview & Voice Assignment",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "cartesia-line-preview",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-line-preview",
+      "name": "Line Preview Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 0],
+      "webhookId": "cartesia-line-preview"
+    },
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "voice-assignments",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-get-assignments",
+      "name": "Get Voice Assignments Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 300],
+      "webhookId": "get-voice-assignments"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "voice-assignments",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-save-assignments",
+      "name": "Save Voice Assignments Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 600],
+      "webhookId": "save-voice-assignments"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auto-assign-voices",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-auto-assign",
+      "name": "Auto Assign Voices Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 900],
+      "webhookId": "auto-assign-voices"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Enhanced validation with 16-voice library\nlet input = $input.all()[0].json;\n\nif (input.body) {\n  input = input.body;\n}\n\nconsole.log('📥 Received Line Preview Request:', JSON.stringify(input, null, 2));\nconsole.log('📥 Input keys:', Object.keys(input));\n\nif (!input.line_data || !input.line_data.text || !input.line_data.speaker) {\n  console.log('❌ line_data structure:', input.line_data);\n  throw new Error('❌ Missing required fields: line_data.text and line_data.speaker are required');\n}\n\nif (!input.user_id) {\n  console.log('❌ Available input keys:', Object.keys(input));\n  throw new Error('❌ Missing required field: user_id is required');\n}\n\nconst lineData = input.line_data;\nconst userId = input.user_id;\nconst scriptId = input.script_id || 'preview-script';\nconst lineId = input.line_id || 'preview-line';\n\n// 16-Voice Cartesia Library - Frontend Integration\nconst voiceMapping = {\n  // Female Voices\n  'female_warm_sarah': 'f31cc6a7-c1e8-4764-980c-60a361443dd1',\n  'female_professional_emily': '32b3f3c5-7171-46aa-abe7-b598964aa793',\n  'female_young_lily': '79743797-2087-422f-8dc7-86f9efca85f1',\n  'female_mature_margaret': 'afa425cf-5489-4a09-8a3f-d3cb1f82150d',\n  'female_soft_sophia': '57dcab65-68ac-45a6-8480-6c4c52ec1cd1',\n  \n  // Male Voices\n  'male_deep_james': 'bfd3644b-d561-4b1c-a01f-d9af98cb67c0',\n  'male_friendly_michael': 'd7862948-75c3-4c7c-ae28-2959fe166f49',\n  'male_professional_david': 'e13cae5c-ec59-4f71-b0a6-266df3c9bb8e',\n  'male_young_ethan': 'cccc21e8-5bcf-4ff0-bc7f-be4e40afc544',\n  'male_mature_robert': '56b87df1-594d-4135-992c-1112bb504c59',\n  \n  // Character Voices\n  'character_gruff_marcus': 'da05e96d-ca10-4220-9042-d8acef654fa9',\n  'character_mystical_luna': '8985388c-1332-4ce7-8d55-789628aa3df4',\n  \n  // Narrator Voices\n  'narrator_british_oliver': 'fb26447f-308b-471e-8b00-8e9f04284eb5',\n  'narrator_neutral_alex': '911b8b22-887f-4caf-bf87-85d834c08708',\n  'narrator_dramatic_victoria': '6a176356-ada1-4b48-b2ae-3a3fdd485680',\n  'narrator_documentary_william': 'e00d0e4c-a5c8-443f-a8a3-473eb9a62355'\n};\n\nconst emotionMapping = {\n  'neutral': { speed: 1.0, emotion: 'neutral' },\n  'happy': { speed: 1.1, emotion: 'happy' },\n  'sad': { speed: 0.9, emotion: 'sad' },\n  'angry': { speed: 1.2, emotion: 'angry' },\n  'scared': { speed: 1.3, emotion: 'fear' },\n  'excited': { speed: 1.15, emotion: 'excited' },\n  'whisper': { speed: 0.8, emotion: 'whisper' },\n  'shout': { speed: 1.2, emotion: 'shouting' }\n};\n\nconst primaryEmotion = lineData.annotations && lineData.annotations.length > 0 \n  ? lineData.annotations[0] \n  : 'neutral';\n\nconst voiceId = input.voice_settings?.voice_id || 'standard-female-1';\nconst cartesiaVoiceId = voiceMapping[voiceId] || voiceMapping['standard-female-1'];\nconst emotionSettings = emotionMapping[primaryEmotion] || emotionMapping['neutral'];\n\n// Your working WAV format - PRESERVED\nconst cartesiaPayload = {\n  model_id: 'sonic-english',\n  voice: {\n    mode: 'id',\n    id: cartesiaVoiceId\n  },\n  transcript: lineData.text,\n  output_format: {\n    container: 'wav',\n    encoding: 'pcm_s16le',\n    sample_rate: 22050\n  },\n  language: 'en',\n  speed: emotionSettings.speed,\n  emotion: emotionSettings.emotion\n};\n\nconst timestamp = Date.now();\nconst filename = `preview_${userId}_${scriptId}_${lineId}_${timestamp}.wav`;\n\nconst responseData = {\n  success: true,\n  request_id: `preview_${timestamp}`,\n  user_id: userId,\n  script_id: scriptId,\n  line_id: lineId,\n  line_data: lineData,\n  cartesia_payload: cartesiaPayload,\n  filename: filename,\n  voice_info: {\n    fancast_voice_id: voiceId,\n    cartesia_voice_id: cartesiaVoiceId,\n    emotion: primaryEmotion,\n    emotion_settings: emotionSettings\n  },\n  processing_timestamp: new Date().toISOString()\n};\n\nconsole.log('✅ Line Preview Data Processed:', JSON.stringify(responseData, null, 2));\nconsole.log('🎵 Using WAV format with PCM encoding for browser compatibility');\n\nreturn responseData;"
+      },
+      "id": "validate-process-input",
+      "name": "Validate & Process Input",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [224, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Enhanced Cartesia request with 16-voice library\nconst inputData = $input.all()[0].json;\n\nconsole.log('📥 Input data for Cartesia request:', JSON.stringify(inputData, null, 2));\n\n// Use the processed data from previous node\nconst cartesiaPayload = inputData.cartesia_payload;\nconst lineText = inputData.line_data?.text || \"Hello world\";\nconst voiceInfo = inputData.voice_info;\n\nconsole.log('🎵 Using processed Cartesia payload:', JSON.stringify(cartesiaPayload, null, 2));\nconsole.log('🎵 Voice info:', JSON.stringify(voiceInfo, null, 2));\n\n// Return the already processed cartesia payload from validation node\nconst cartesiaRequest = {\n  model_id: cartesiaPayload.model_id || \"sonic-english\",\n  transcript: cartesiaPayload.transcript || lineText,\n  voice: cartesiaPayload.voice,\n  output_format: cartesiaPayload.output_format || {\n    container: \"wav\",\n    encoding: \"pcm_s16le\",\n    sample_rate: 22050\n  },\n  language: cartesiaPayload.language || \"en\",\n  speed: cartesiaPayload.speed || 1.0,\n  emotion: cartesiaPayload.emotion || \"neutral\"\n};\n\nconsole.log('🎵 Complete Cartesia Request:', JSON.stringify(cartesiaRequest, null, 2));\nconsole.log('🎵 Using voice ID:', cartesiaRequest.voice.id);\nconsole.log('🎵 Using emotion settings:', { speed: cartesiaRequest.speed, emotion: cartesiaRequest.emotion });\n\nreturn cartesiaRequest;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [432, 0],
+      "id": "build-cartesia-request",
+      "name": "Build Cartesia Request"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.cartesia.ai/tts/bytes",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cartesia-Version",
+              "value": "2024-06-10"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ $json }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": "={{ false }}",
+              "neverError": "={{ false }}",
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "cartesia-tts-call",
+      "name": "Cartesia TTS API Call",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [656, 0],
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "4X3ZLANwREGy1mcb",
+          "name": "Bearer Auth account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Your working audio processing - PRESERVED\nconst cartesiaResponse = $input.all()[0];\n\nconsole.log('📥 Cartesia Response received');\nconsole.log('🔍 Has JSON data:', !!cartesiaResponse.json);\nconsole.log('🔍 Has binary data:', !!cartesiaResponse.binary);\n\nif (cartesiaResponse.binary) {\n  console.log('🔍 Binary keys:', Object.keys(cartesiaResponse.binary));\n  if (cartesiaResponse.binary.data) {\n    console.log('✅ Binary data found, size:', cartesiaResponse.binary.data.length || 'unknown');\n  }\n}\n\nconst originalInput = $('Validate & Process Input').first().json;\n\nconst userId = originalInput.user_id;\nconst scriptId = originalInput.script_id;\nconst lineId = originalInput.line_id;\n\nconst timestamp = Date.now();\nconst s3Key = `previews/preview_${userId}_${scriptId}_${lineId}_${timestamp}.wav`;\n\nconsole.log('📦 Generated S3 key:', s3Key);\n\nconst result = {\n  s3_key: s3Key,\n  bucket: 'fancast-tts-previews',\n  region: 'eu-west-1',\n  content_type: 'audio/wav',\n  user_id: userId,\n  script_id: scriptId,\n  line_id: lineId,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('📤 Process Audio Response output:', JSON.stringify(result, null, 2));\n\nreturn [{\n  json: result,\n  binary: cartesiaResponse.binary\n}];"
+      },
+      "id": "process-audio-response",
+      "name": "Process Audio Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "fancast-tts-previews",
+        "fileName": "={{ $json.s3_key }}",
+        "additionalFields": {}
+      },
+      "id": "upload-preview-s3",
+      "name": "Upload Preview to S3",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [1088, 0],
+      "credentials": {
+        "aws": {
+          "id": "mAxNNjVgwaRHplQE",
+          "name": "AWS account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "functionCode": "// Your working response generator - PRESERVED\nconst s3Data = $input.all()[0].json;\nconst originalInput = $('Validate & Process Input').first().json;\n\nconst userId = originalInput.user_id || 'unknown';\nconst scriptId = originalInput.script_id || 'unknown';  \nconst lineId = originalInput.line_id || 'unknown';\nconst speaker = originalInput.line_data?.speaker || 'unknown';\nconst emotion = originalInput.voice_settings?.emotion || 'neutral';\n\nconst processAudioNode = $('Process Audio Response').first();\nlet s3Key = null;\n\nif (processAudioNode && processAudioNode.json && processAudioNode.json.s3_key) {\n  s3Key = processAudioNode.json.s3_key;\n} else {\n  const timestamp = Date.now();\n  s3Key = `previews/preview_${userId}_${scriptId}_${lineId}_${timestamp}.wav`;\n}\n\nconst bucketName = 'fancast-tts-previews';\nconst region = 'eu-west-1';\nconst s3Url = `https://${bucketName}.s3.${region}.amazonaws.com/${s3Key}`;\n\nconst finalResponse = {\n  success: true,\n  message: 'Line preview generated successfully',\n  data: {\n    preview_url: s3Url,\n    audio_format: 'wav',\n    audio_encoding: 's3_url',\n    file_size: '129 kB',\n    bucket: bucketName,\n    key: s3Key,\n    timestamp: new Date().toISOString(),\n    metadata: {\n      user_id: userId,\n      script_id: scriptId,\n      line_id: lineId,\n      speaker: speaker,\n      emotion: emotion,\n      voice_id: originalInput.voice_settings?.voice_id || 'unknown'\n    }\n  }\n};\n\nreturn finalResponse;"
+      },
+      "id": "generate-final-response",
+      "name": "Generate Final Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1312, 0]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseKey": "={{ $json }}",
+          "responseHeaders": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [1520, 0],
+      "id": "respond-to-webhook-preview",
+      "name": "Respond to Webhook - Preview"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Get Voice Assignments Handler\nlet input = $input.all()[0].json;\n\nif (input.body) {\n  input = input.body;\n}\n\nconsole.log('📥 Get Voice Assignments Request:', JSON.stringify(input, null, 2));\n\nif (!input.script_id) {\n  throw new Error('❌ Missing required field: script_id');\n}\n\nreturn {\n  script_id: input.script_id,\n  user_id: input.user_id\n};"
+      },
+      "id": "process-get-assignments",
+      "name": "Process Get Assignments",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [224, 300]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "operation": "select",
+        "table": {
+          "value": "voice_assignments"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "script_id",
+              "condition": "equal",
+              "value": "={{ $json.script_id }}"
+            }
+          ]
+        }
+      },
+      "id": "get-assignments-db",
+      "name": "Get Assignments from DB",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [448, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format voice assignments response\nconst assignments = $input.all()[0].json;\n\nconsole.log('📤 Voice assignments from DB:', JSON.stringify(assignments, null, 2));\n\nconst response = {\n  success: true,\n  data: assignments || [],\n  count: Array.isArray(assignments) ? assignments.length : 0\n};\n\nreturn response;"
+      },
+      "id": "format-assignments-response",
+      "name": "Format Assignments Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [672, 300]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseKey": "={{ $json }}",
+          "responseHeaders": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [896, 300],
+      "id": "respond-to-webhook-get",
+      "name": "Respond to Webhook - Get"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Process Save Voice Assignments Request\nlet input = $input.all()[0].json;\n\nif (input.body) {\n  input = input.body;\n}\n\nconsole.log('💾 Processing Save Voice Assignments:', JSON.stringify(input, null, 2));\n\nif (!input.script_id || !input.assignments || !input.user_id) {\n  throw new Error('❌ Missing required fields: script_id, assignments, and user_id are required');\n}\n\nconst formattedAssignments = input.assignments.map(assignment => ({\n  script_id: input.script_id,\n  production_id: input.production_id || null,\n  character_name: assignment.character_name,\n  cartesia_voice_id: assignment.cartesia_voice_id,\n  voice_name: assignment.voice_name,\n  voice_settings: assignment.voice_settings || {},\n  emotion_mappings: assignment.emotion_mappings || {},\n  default_emotion: assignment.default_emotion || 'neutral',\n  lines_count: assignment.lines_count || 0,\n  total_duration: assignment.total_duration || 0\n}));\n\nreturn {\n  assignments: formattedAssignments,\n  script_id: input.script_id,\n  production_id: input.production_id,\n  user_id: input.user_id\n};"
+      },
+      "id": "process-save-request",
+      "name": "Process Save Request",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [224, 600]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "operation": "upsert",
+        "table": {
+          "value": "voice_assignments"
+        },
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "script_id",
+              "value": "={{ $json.script_id }}"
+            },
+            {
+              "column": "production_id",
+              "value": "={{ $json.production_id }}"
+            },
+            {
+              "column": "character_name",
+              "value": "={{ $json.character_name }}"
+            },
+            {
+              "column": "cartesia_voice_id",
+              "value": "={{ $json.cartesia_voice_id }}"
+            },
+            {
+              "column": "voice_name",
+              "value": "={{ $json.voice_name }}"
+            },
+            {
+              "column": "voice_settings",
+              "value": "={{ $json.voice_settings }}"
+            },
+            {
+              "column": "emotion_mappings",
+              "value": "={{ $json.emotion_mappings }}"
+            },
+            {
+              "column": "default_emotion",
+              "value": "={{ $json.default_emotion }}"
+            }
+          ]
+        },
+        "upsertFields": ["script_id", "character_name"]
+      },
+      "id": "save-assignments-db",
+      "name": "Save Assignments to DB",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [448, 600]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format save response\nconst result = $input.all()[0].json;\n\nconst response = {\n  success: true,\n  message: 'Voice assignments saved successfully',\n  data: result\n};\n\nreturn response;"
+      },
+      "id": "format-save-response",
+      "name": "Format Save Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [672, 600]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseKey": "={{ $json }}",
+          "responseHeaders": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [896, 600],
+      "id": "respond-to-webhook-save",
+      "name": "Respond to Webhook - Save"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "auto-assign-voices",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-auto-assign",
+      "name": "Auto Assign Voices Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [0, 900],
+      "webhookId": "auto-assign-voices"
+    },
+    {
+      "parameters": {
+        "functionCode": "// Auto-Assign Voices Based on Character Analysis - 16 Voice Library\nlet input = $input.all()[0].json;\n\nif (input.body) {\n  input = input.body;\n}\n\nconsole.log('🤖 Processing Auto-Assign Request:', JSON.stringify(input, null, 2));\n\nif (!input.script_id || !input.characters) {\n  throw new Error('❌ Missing required fields: script_id and characters array required');\n}\n\n// 16-Voice Cartesia Library with metadata\nconst voiceLibrary = {\n  // Female Voices\n  'f31cc6a7-c1e8-4764-980c-60a361443dd1': { name: 'Sarah', gender: 'female', style: 'warm', age: 'adult', tags: ['friendly', 'narrator', 'conversational'] },\n  '32b3f3c5-7171-46aa-abe7-b598964aa793': { name: 'Emily', gender: 'female', style: 'professional', age: 'adult', tags: ['business', 'clear', 'confident'] },\n  '79743797-2087-422f-8dc7-86f9efca85f1': { name: 'Lily', gender: 'female', style: 'youthful', age: 'young', tags: ['young', 'cheerful', 'bright'] },\n  'afa425cf-5489-4a09-8a3f-d3cb1f82150d': { name: 'Margaret', gender: 'female', style: 'mature', age: 'mature', tags: ['mature', 'authoritative', 'storyteller'] },\n  '57dcab65-68ac-45a6-8480-6c4c52ec1cd1': { name: 'Sophia', gender: 'female', style: 'soft', age: 'adult', tags: ['gentle', 'calm', 'emotional'] },\n  \n  // Male Voices\n  'bfd3644b-d561-4b1c-a01f-d9af98cb67c0': { name: 'James', gender: 'male', style: 'deep', age: 'adult', tags: ['deep', 'narrator', 'dramatic'] },\n  'd7862948-75c3-4c7c-ae28-2959fe166f49': { name: 'Michael', gender: 'male', style: 'friendly', age: 'adult', tags: ['conversational', 'warm', 'relatable'] },\n  'e13cae5c-ec59-4f71-b0a6-266df3c9bb8e': { name: 'David', gender: 'male', style: 'professional', age: 'adult', tags: ['business', 'confident', 'clear'] },\n  'cccc21e8-5bcf-4ff0-bc7f-be4e40afc544': { name: 'Ethan', gender: 'male', style: 'youthful', age: 'young', tags: ['young', 'enthusiastic', 'dynamic'] },\n  '56b87df1-594d-4135-992c-1112bb504c59': { name: 'Robert', gender: 'male', style: 'mature', age: 'mature', tags: ['mature', 'wise', 'storyteller'] },\n  \n  // Character Voices\n  'da05e96d-ca10-4220-9042-d8acef654fa9': { name: 'Marcus', gender: 'male', style: 'character', age: 'adult', tags: ['character', 'gruff', 'tough'] },\n  '8985388c-1332-4ce7-8d55-789628aa3df4': { name: 'Luna', gender: 'female', style: 'character', age: 'adult', tags: ['character', 'mystical', 'fantasy'] },\n  \n  // Narrator Voices\n  'fb26447f-308b-471e-8b00-8e9f04284eb5': { name: 'Oliver', gender: 'male', style: 'narrator', age: 'adult', tags: ['narrator', 'british', 'documentary'] },\n  '911b8b22-887f-4caf-bf87-85d834c08708': { name: 'Alex', gender: 'neutral', style: 'narrator', age: 'adult', tags: ['narrator', 'neutral', 'audiobook'] },\n  '6a176356-ada1-4b48-b2ae-3a3fdd485680': { name: 'Victoria', gender: 'female', style: 'narrator', age: 'adult', tags: ['narrator', 'dramatic', 'theatrical'] },\n  'e00d0e4c-a5c8-443f-a8a3-473eb9a62355': { name: 'William', gender: 'male', style: 'narrator', age: 'mature', tags: ['narrator', 'documentary', 'authoritative'] }\n};\n\n// Enhanced character analysis with 16-voice library\nfunction analyzeCharacter(character) {\n  const name = character.name.toLowerCase();\n  const lineCount = character.line_count || 0;\n  \n  // Enhanced gender inference\n  const femaleNames = ['sarah', 'emily', 'lily', 'margaret', 'sophia', 'luna', 'victoria', 'anna', 'mary', 'jane', 'alice', 'evelyn'];\n  const maleNames = ['james', 'michael', 'david', 'ethan', 'robert', 'marcus', 'oliver', 'william', 'john', 'mike', 'alex', 'tom'];\n  \n  let inferredGender = 'neutral';\n  if (femaleNames.some(fn => name.includes(fn))) {\n    inferredGender = 'female';\n  } else if (maleNames.some(mn => name.includes(mn))) {\n    inferredGender = 'male';\n  }\n  \n  // Age analysis from character traits\n  const youngIndicators = ['young', 'teen', 'child', 'kid', 'junior'];\n  const matureIndicators = ['elder', 'senior', 'old', 'wise', 'grandfather', 'grandmother'];\n  \n  let inferredAge = 'adult';\n  if (youngIndicators.some(yi => name.includes(yi))) {\n    inferredAge = 'young';\n  } else if (matureIndicators.some(mi => name.includes(mi))) {\n    inferredAge = 'mature';\n  }\n  \n  // Role analysis\n  const isNarrator = name.includes('narrator') || name.includes('voice') || name.includes('storyteller');\n  const isMainCharacter = lineCount > 15;\n  const isCharacterRole = name.includes('villain') || name.includes('hero') || name.includes('witch') || name.includes('king') || name.includes('queen');\n  \n  return {\n    gender: inferredGender,\n    age: inferredAge,\n    isNarrator,\n    isMainCharacter,\n    isCharacterRole,\n    lineCount\n  };\n}\n\n// Smart voice assignment based on character analysis\nconst assignments = input.characters.map(character => {\n  const analysis = analyzeCharacter(character);\n  \n  let selectedVoiceId = 'f31cc6a7-c1e8-4764-980c-60a361443dd1'; // Default to Sarah\n  \n  // Narrator voices get priority\n  if (analysis.isNarrator) {\n    if (analysis.gender === 'female') {\n      selectedVoiceId = '6a176356-ada1-4b48-b2ae-3a3fdd485680'; // Victoria (dramatic narrator)\n    } else {\n      selectedVoiceId = 'e00d0e4c-a5c8-443f-a8a3-473eb9a62355'; // William (documentary narrator)\n    }\n  }\n  // Character/fantasy roles\n  else if (analysis.isCharacterRole) {\n    if (analysis.gender === 'female') {\n      selectedVoiceId = '8985388c-1332-4ce7-8d55-789628aa3df4'; // Luna (mystical character)\n    } else {\n      selectedVoiceId = 'da05e96d-ca10-4220-9042-d8acef654fa9'; // Marcus (gruff character)\n    }\n  }\n  // Female character assignment\n  else if (analysis.gender === 'female') {\n    if (analysis.age === 'young') {\n      selectedVoiceId = '79743797-2087-422f-8dc7-86f9efca85f1'; // Lily (youthful)\n    } else if (analysis.age === 'mature') {\n      selectedVoiceId = 'afa425cf-5489-4a09-8a3f-d3cb1f82150d'; // Margaret (mature)\n    } else if (analysis.isMainCharacter) {\n      selectedVoiceId = 'f31cc6a7-c1e8-4764-980c-60a361443dd1'; // Sarah (warm)\n    } else {\n      selectedVoiceId = '57dcab65-68ac-45a6-8480-6c4c52ec1cd1'; // Sophia (soft)\n    }\n  }\n  // Male character assignment\n  else if (analysis.gender === 'male') {\n    if (analysis.age === 'young') {\n      selectedVoiceId = 'cccc21e8-5bcf-4ff0-bc7f-be4e40afc544'; // Ethan (youthful)\n    } else if (analysis.age === 'mature') {\n      selectedVoiceId = '56b87df1-594d-4135-992c-1112bb504c59'; // Robert (mature)\n    } else if (analysis.isMainCharacter) {\n      selectedVoiceId = 'bfd3644b-d561-4b1c-a01f-d9af98cb67c0'; // James (deep)\n    } else {\n      selectedVoiceId = 'd7862948-75c3-4c7c-ae28-2959fe166f49'; // Michael (friendly)\n    }\n  }\n  // Neutral/unknown gender\n  else {\n    selectedVoiceId = '911b8b22-887f-4caf-bf87-85d834c08708'; // Alex (neutral narrator)\n  }\n  \n  const selectedVoice = voiceLibrary[selectedVoiceId];\n  \n  return {\n    script_id: input.script_id,\n    production_id: input.production_id || null,\n    character_name: character.name,\n    cartesia_voice_id: selectedVoiceId,\n    voice_name: selectedVoice.name,\n    voice_settings: {},\n    emotion_mappings: {},\n    default_emotion: 'neutral',\n    lines_count: character.line_count || 0,\n    total_duration: 0\n  };\n});\n\nreturn {\n  assignments,\n  script_id: input.script_id,\n  production_id: input.production_id\n};"
+      },
+      "id": "process-auto-assign",
+      "name": "Process Auto Assign",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [224, 900]
+    },
+    {
+      "parameters": {
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "operation": "upsert",
+        "table": {
+          "value": "voice_assignments"
+        },
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "script_id",
+              "value": "={{ $json.script_id }}"
+            },
+            {
+              "column": "production_id",
+              "value": "={{ $json.production_id }}"
+            },
+            {
+              "column": "character_name",
+              "value": "={{ $json.character_name }}"
+            },
+            {
+              "column": "cartesia_voice_id",
+              "value": "={{ $json.cartesia_voice_id }}"
+            },
+            {
+              "column": "voice_name",
+              "value": "={{ $json.voice_name }}"
+            },
+            {
+              "column": "voice_settings",
+              "value": "={{ $json.voice_settings }}"
+            },
+            {
+              "column": "emotion_mappings",
+              "value": "={{ $json.emotion_mappings }}"
+            },
+            {
+              "column": "default_emotion",
+              "value": "={{ $json.default_emotion }}"
+            }
+          ]
+        },
+        "upsertFields": ["script_id", "character_name"]
+      },
+      "id": "save-auto-assignments-db",
+      "name": "Save Auto Assignments to DB",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [448, 900]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Format auto-assign response\nconst result = $input.all()[0].json;\n\nconst response = {\n  success: true,\n  message: 'Voices auto-assigned successfully',\n  data: result\n};\n\nreturn response;"
+      },
+      "id": "format-auto-assign-response",
+      "name": "Format Auto Assign Response",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [672, 900]
+    },
+    {
+      "parameters": {
+        "options": {
+          "responseCode": 200,
+          "responseKey": "={{ $json }}",
+          "responseHeaders": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization, X-Requested-With"
+          }
+        }
+      },
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.4,
+      "position": [896, 900],
+      "id": "respond-to-webhook-auto",
+      "name": "Respond to Webhook - Auto"
+    }
+  ],
+  "connections": {
+    "Line Preview Webhook": {
+      "main": [
+        [
+          {
+            "node": "Validate & Process Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate & Process Input": {
+      "main": [
+        [
+          {
+            "node": "Build Cartesia Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Cartesia Request": {
+      "main": [
+        [
+          {
+            "node": "Cartesia TTS API Call",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cartesia TTS API Call": {
+      "main": [
+        [
+          {
+            "node": "Process Audio Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Audio Response": {
+      "main": [
+        [
+          {
+            "node": "Upload Preview to S3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Preview to S3": {
+      "main": [
+        [
+          {
+            "node": "Generate Final Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Final Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook - Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Voice Assignments Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Get Assignments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Get Assignments": {
+      "main": [
+        [
+          {
+            "node": "Get Assignments from DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Assignments from DB": {
+      "main": [
+        [
+          {
+            "node": "Format Assignments Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Assignments Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook - Get",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Voice Assignments Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Save Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Save Request": {
+      "main": [
+        [
+          {
+            "node": "Save Assignments to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Assignments to DB": {
+      "main": [
+        [
+          {
+            "node": "Format Save Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Save Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook - Save",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto Assign Voices Webhook": {
+      "main": [
+        [
+          {
+            "node": "Process Auto Assign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Auto Assign": {
+      "main": [
+        [
+          {
+            "node": "Save Auto Assignments to DB",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Auto Assignments to DB": {
+      "main": [
+        [
+          {
+            "node": "Format Auto Assign Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Auto Assign Response": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook - Auto",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [
+    {
+      "createdAt": "2025-08-15T17:13:00.000Z",
+      "updatedAt": "2025-08-15T17:13:00.000Z",
+      "id": "enhanced-cartesia",
+      "name": "Enhanced Cartesia"
+    }
+  ],
+  "triggerCount": 0,
+  "updatedAt": "2025-08-15T17:13:00.000Z",
+  "versionId": "1"
+}

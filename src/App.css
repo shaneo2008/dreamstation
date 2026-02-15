@@ -1,0 +1,48 @@
+/* ────────────────────────────────────────────────
+   🌙 DreamStation — App-Specific Utilities
+   Inherits all design tokens from index.css (Finch palette)
+   ──────────────────────────────────────────────── */
+
+/* Cover placeholder gradient (warm peach → glow) */
+.gradient-teal-orange {
+  background: linear-gradient(135deg, var(--color-dream-glow), var(--color-pastel-peach));
+}
+
+/* Gradient text utility — warm Finch style */
+.gradient-text {
+  background: linear-gradient(135deg, #E8956A 0%, #D4764E 50%, #F0B89A 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* Animation Classes */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes slideUp {
+  from {
+    transform: translateY(100%);
+  }
+
+  to {
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.4s ease-out;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out;
+}

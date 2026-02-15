@@ -1,0 +1,512 @@
+{
+  "name": "Voice Assignment API",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "GET",
+        "path": "/api/scripts/{{$node[\"Webhook\"].json[\"script_id\"]}}/voice-assignments",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "get-voice-assignments",
+      "name": "Get Voice Assignments",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 300],
+      "webhookId": "voice-assignments-get"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/api/scripts/{{$node[\"Webhook\"].json[\"script_id\"]}}/voice-assignments",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "save-voice-assignments",
+      "name": "Save Voice Assignments",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 500],
+      "webhookId": "voice-assignments-save"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/api/preview/voice-test",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "voice-preview",
+      "name": "Voice Preview",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 700],
+      "webhookId": "voice-preview"
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "/api/scripts/{{$node[\"Webhook\"].json[\"script_id\"]}}/auto-assign-voices",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "auto-assign-voices",
+      "name": "Auto Assign Voices",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [240, 900],
+      "webhookId": "auto-assign-voices"
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "value": "public"
+        },
+        "table": {
+          "value": "voice_assignments"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "script_id",
+              "condition": "equal",
+              "value": "={{$node[\"Get Voice Assignments\"].json[\"script_id\"]}}"
+            }
+          ]
+        },
+        "sort": {
+          "values": [
+            {
+              "column": "character_name",
+              "direction": "ASC"
+            }
+          ]
+        },
+        "limit": 100
+      },
+      "id": "query-assignments",
+      "name": "Query Voice Assignments",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 300],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "value": "public"
+        },
+        "table": {
+          "value": "voice_assignments"
+        },
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "script_id",
+              "value": "={{$node[\"Save Voice Assignments\"].json[\"script_id\"]}}"
+            },
+            {
+              "column": "production_id",
+              "value": "={{$node[\"Save Voice Assignments\"].json[\"production_id\"]}}"
+            },
+            {
+              "column": "character_name",
+              "value": "={{$node[\"Save Voice Assignments\"].json[\"character_name\"]}}"
+            },
+            {
+              "column": "cartesia_voice_id",
+              "value": "={{$node[\"Save Voice Assignments\"].json[\"voice_id\"]}}"
+            },
+            {
+              "column": "voice_name",
+              "value": "={{$node[\"Save Voice Assignments\"].json[\"voice_name\"]}}"
+            },
+            {
+              "column": "voice_settings",
+              "value": "={}"
+            },
+            {
+              "column": "emotion_mappings",
+              "value": "={}"
+            },
+            {
+              "column": "default_emotion",
+              "value": "neutral"
+            }
+          ]
+        },
+        "upsertFields": ["script_id", "character_name"]
+      },
+      "id": "upsert-assignment",
+      "name": "Upsert Voice Assignment",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 500],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://api.cartesia.ai/tts/bytes",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "cartesiaApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Cartesia-Version",
+              "value": "2024-06-10"
+            },
+            {
+              "name": "X-API-Key",
+              "value": "={{$credentials.cartesiaApi.apiKey}}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "model_id",
+              "value": "sonic-english"
+            },
+            {
+              "name": "voice",
+              "value": {
+                "mode": "id",
+                "id": "={{$node[\"Voice Preview\"].json[\"voice_id\"]}}"
+              }
+            },
+            {
+              "name": "transcript",
+              "value": "={{$node[\"Voice Preview\"].json[\"text\"]}}"
+            },
+            {
+              "name": "output_format",
+              "value": {
+                "container": "wav",
+                "encoding": "pcm_f32le",
+                "sample_rate": 44100
+              }
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "cartesia-tts",
+      "name": "Cartesia TTS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [460, 700],
+      "credentials": {
+        "cartesiaApi": {
+          "id": "cartesia-credentials",
+          "name": "Cartesia API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "upload",
+        "bucketName": "fancast-audio-previews",
+        "fileName": "voice-preview-{{$now}}.wav",
+        "binaryData": true,
+        "options": {
+          "makePublic": true
+        }
+      },
+      "id": "upload-preview",
+      "name": "Upload Audio Preview",
+      "type": "n8n-nodes-base.awsS3",
+      "typeVersion": 1,
+      "position": [680, 700],
+      "credentials": {
+        "aws": {
+          "id": "aws-credentials",
+          "name": "AWS S3"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "select",
+        "schema": {
+          "value": "public"
+        },
+        "table": {
+          "value": "scripts"
+        },
+        "where": {
+          "values": [
+            {
+              "column": "id",
+              "condition": "equal",
+              "value": "={{$node[\"Auto Assign Voices\"].json[\"script_id\"]}}"
+            }
+          ]
+        }
+      },
+      "id": "get-script-lines",
+      "name": "Get Script Lines",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [460, 900],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Character analysis and voice assignment logic\nconst scriptLines = $input.first().json.lines || [];\nconst userId = $node[\"Auto Assign Voices\"].json[\"user_id\"];\nconst scriptId = $node[\"Auto Assign Voices\"].json[\"script_id\"];\n\n// Cartesia voice library\nconst voices = {\n  // Female voices\n  'f31cc6a7-c1e8-4764-980c-60a361443dd1': { name: 'Sarah', gender: 'female', style: 'warm', tags: ['friendly', 'approachable'] },\n  '32b3f3c5-7171-46aa-abe7-b598964aa793': { name: 'Emily', gender: 'female', style: 'professional', tags: ['clear', 'articulate'] },\n  '79743797-2087-422f-8dc7-86f9efca85f1': { name: 'Lily', gender: 'female', style: 'youthful', tags: ['young', 'energetic'] },\n  'afa425cf-5489-4a09-8a3f-d3cb1f82150d': { name: 'Margaret', gender: 'female', style: 'mature', tags: ['wise', 'experienced'] },\n  \n  // Male voices\n  'bfd3644b-d561-4b1c-a01f-d9af98cb67c0': { name: 'James', gender: 'male', style: 'deep', tags: ['authoritative', 'strong'] },\n  'd7862948-75c3-4c7c-ae28-2959fe166f49': { name: 'Michael', gender: 'male', style: 'friendly', tags: ['warm', 'approachable'] },\n  'e13cae5c-ec59-4f71-b0a6-266df3c9bb8e': { name: 'David', gender: 'male', style: 'professional', tags: ['clear', 'authoritative'] },\n  'cccc21e8-5bcf-4ff0-bc7f-be4e40afc544': { name: 'Ethan', gender: 'male', style: 'youthful', tags: ['young', 'energetic'] },\n  \n  // Narrator voices\n  'fb26447f-308b-471e-8b00-8e9f04284eb5': { name: 'Oliver', gender: 'male', style: 'narrator', tags: ['british', 'storytelling'] },\n  '911b8b22-887f-4caf-bf87-85d834c08708': { name: 'Alex', gender: 'neutral', style: 'narrator', tags: ['professional', 'clear'] }\n};\n\n// Get unique characters\nconst characters = [...new Set(scriptLines.map(line => line.speaker))];\n\n// Auto-assign logic\nconst assignments = [];\ncharacters.forEach(character => {\n  const characterLines = scriptLines.filter(line => line.speaker === character);\n  const lineCount = characterLines.length;\n  \n  let assignedVoiceId;\n  \n  // Simple assignment logic based on character name and role\n  if (character.toLowerCase().includes('narrator')) {\n    assignedVoiceId = '911b8b22-887f-4caf-bf87-85d834c08708'; // Alex\n  } else if (character.toLowerCase().includes('hero') || character.toLowerCase().includes('protagonist')) {\n    assignedVoiceId = 'd7862948-75c3-4c7c-ae28-2959fe166f49'; // Michael\n  } else if (character.toLowerCase().includes('villain') || character.toLowerCase().includes('antagonist')) {\n    assignedVoiceId = 'bfd3644b-d561-4b1c-a01f-d9af98cb67c0'; // James\n  } else {\n    // Default assignment based on typical character names\n    const femaleNames = ['sarah', 'emily', 'lily', 'margaret', 'anna', 'maria', 'princess', 'queen'];\n    const isFemale = femaleNames.some(name => character.toLowerCase().includes(name));\n    \n    if (isFemale) {\n      assignedVoiceId = lineCount > 15 ? 'f31cc6a7-c1e8-4764-980c-60a361443dd1' : '79743797-2087-422f-8dc7-86f9efca85f1';\n    } else {\n      assignedVoiceId = lineCount > 15 ? 'e13cae5c-ec59-4f71-b0a6-266df3c9bb8e' : 'cccc21e8-5bcf-4ff0-bc7f-be4e40afc544';\n    }\n  }\n  \n  const voice = voices[assignedVoiceId];\n  assignments.push({\n    script_id: scriptId,\n    character_name: character,\n    voice_id: assignedVoiceId,\n    voice_name: voice.name,\n    assigned_by: userId\n  });\n});\n\nreturn assignments;"
+      },
+      "id": "analyze-characters",
+      "name": "Analyze Characters",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [680, 900]
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "schema": {
+          "value": "public"
+        },
+        "table": {
+          "value": "voice_assignments"
+        },
+        "fieldsUi": {
+          "values": [
+            {
+              "column": "script_id",
+              "value": "={{$json.script_id}}"
+            },
+            {
+              "column": "character_name",
+              "value": "={{$json.character_name}}"
+            },
+            {
+              "column": "cartesia_voice_id",
+              "value": "={{$json.voice_id}}"
+            },
+            {
+              "column": "voice_name",
+              "value": "={{$json.voice_name}}"
+            },
+            {
+              "column": "assigned_by",
+              "value": "={{$json.assigned_by}}"
+            }
+          ]
+        },
+        "upsertFields": ["script_id", "character_name"]
+      },
+      "id": "bulk-upsert",
+      "name": "Bulk Upsert Assignments",
+      "type": "n8n-nodes-base.supabase",
+      "typeVersion": 1,
+      "position": [900, 900],
+      "credentials": {
+        "supabaseApi": {
+          "id": "supabase-credentials",
+          "name": "Supabase API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$node[\"Query Voice Assignments\"].json}}"
+      },
+      "id": "respond-assignments",
+      "name": "Respond Voice Assignments",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": true, \"message\": \"Voice assignment saved\"}"
+      },
+      "id": "respond-save",
+      "name": "Respond Save Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [680, 500]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": true, \"audio_url\": $node[\"Upload Audio Preview\"].json[\"Location\"]}"
+      },
+      "id": "respond-preview",
+      "name": "Respond Preview URL",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [900, 700]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={\"success\": true, \"assignments\": $node[\"Bulk Upsert Assignments\"].json}"
+      },
+      "id": "respond-auto-assign",
+      "name": "Respond Auto Assign",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1120, 900]
+    }
+  ],
+  "connections": {
+    "Get Voice Assignments": {
+      "main": [
+        [
+          {
+            "node": "Query Voice Assignments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Voice Assignments": {
+      "main": [
+        [
+          {
+            "node": "Upsert Voice Assignment",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Voice Preview": {
+      "main": [
+        [
+          {
+            "node": "Cartesia TTS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Auto Assign Voices": {
+      "main": [
+        [
+          {
+            "node": "Get Script Lines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Voice Assignments": {
+      "main": [
+        [
+          {
+            "node": "Respond Voice Assignments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upsert Voice Assignment": {
+      "main": [
+        [
+          {
+            "node": "Respond Save Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cartesia TTS": {
+      "main": [
+        [
+          {
+            "node": "Upload Audio Preview",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload Audio Preview": {
+      "main": [
+        [
+          {
+            "node": "Respond Preview URL",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Script Lines": {
+      "main": [
+        [
+          {
+            "node": "Analyze Characters",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Analyze Characters": {
+      "main": [
+        [
+          {
+            "node": "Bulk Upsert Assignments",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Bulk Upsert Assignments": {
+      "main": [
+        [
+          {
+            "node": "Respond Auto Assign",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {},
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": [],
+  "triggerCount": 0,
+  "updatedAt": "2025-01-15T16:50:00.000Z",
+  "versionId": "1"
+}

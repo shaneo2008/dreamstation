@@ -1,0 +1,711 @@
+{
+  "name": "FancastAI Gemini Version",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "ai-assisted-creation",
+        "responseMode": "responseNode",
+        "options": {
+          "allowedOrigins": "*"
+        }
+      },
+      "id": "f48242af-fe6f-4140-94e3-321e91ac9a79",
+      "name": "Webhook Trigger",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "dca59b16-a258-4de1-93c8-6ec3b5990227"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Access the webhook payload from the correct location\nconst webhookData = $input.first().json;\nconst payload = webhookData.body || webhookData;\n\n// Extract required fields\nconst userId = payload.user_id || payload.userId;\nconst storyId = payload.story_id || payload.storyId;\nconst concept = payload.concept || {};\nconst initialConcept = concept.initialConcept || payload.initialConcept;\n\n// Validation\nif (!userId) throw new Error('Missing user_id field');\nif (!storyId) throw new Error('Missing story_id field');\nif (!initialConcept) throw new Error('Missing concept.initialConcept field');\n\n// Return validated data\nreturn {\n  jobId: `ai_create_gemini_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,\n  userId,\n  storyId,\n  concept: concept,\n  optimizedPrompt: payload.optimized_prompt || '',\n  characters: payload.characters || [],\n  preferences: payload.preferences || {},\n  generation_metadata: payload.generation_metadata || {}\n};"
+      },
+      "id": "e08ff432-d242-42b0-bd46-1505b68b0eec",
+      "name": "Validate Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        224,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/stories",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $json.storyId }}"
+            },
+            {
+              "name": "user_id",
+              "value": "={{ $json.userId }}"
+            },
+            {
+              "name": "title",
+              "value": "AI Generated Story (Gemini)"
+            },
+            {
+              "name": "description",
+              "value": "={{ $json.concept.initialConcept }}"
+            },
+            {
+              "name": "genres",
+              "value": "={{ [$json.concept.genre] }}"
+            },
+            {
+              "name": "episode_count",
+              "value": "={{ $json.concept.targetEpisodes }}"
+            },
+            {
+              "name": "episode_duration",
+              "value": "={{ $json.concept.episodeLengthMinutes }}"
+            },
+            {
+              "name": "status",
+              "value": "draft"
+            },
+            {
+              "name": "created_at",
+              "value": "={{ new Date().toISOString() }}"
+            },
+            {
+              "name": "updated_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        448,
+        0
+      ],
+      "id": "03a578a1-796d-486c-aef4-5b1ae27a736b",
+      "name": "Create Story",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "D8ivuhUEOHEw1Jwz",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/story_concepts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $('Validate Input').first().json.userId }}"
+            },
+            {
+              "name": "story_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "initial_concept",
+              "value": "={{ $('Validate Input').first().json.concept.initialConcept }}"
+            },
+            {
+              "name": "genre",
+              "value": "={{ $('Validate Input').first().json.concept.genre || 'drama' }}"
+            },
+            {
+              "name": "target_episodes",
+              "value": "={{ $('Validate Input').first().json.concept.targetEpisodes || 1 }}"
+            },
+            {
+              "name": "episode_length_minutes",
+              "value": "={{ $('Validate Input').first().json.concept.episodeLengthMinutes || 10 }}"
+            },
+            {
+              "name": "development_stage",
+              "value": "concept"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6aac82da-67ed-49d6-a523-d6cbc4d782b0",
+      "name": "Create Story Concept",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        672,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "D8ivuhUEOHEw1Jwz",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/ai_generation_jobs",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "user_id",
+              "value": "={{ $('Validate Input').first().json.userId }}"
+            },
+            {
+              "name": "story_id",
+              "value": "={{ $('Validate Input').first().json.storyId }}"
+            },
+            {
+              "name": "creation_type",
+              "value": "ai_assisted_creation"
+            },
+            {
+              "name": "story_concept_id",
+              "value": "={{ $('Create Story Concept').first().json.id }}"
+            },
+            {
+              "name": "status",
+              "value": "processing"
+            },
+            {
+              "name": "progress",
+              "value": "10"
+            },
+            {
+              "name": "current_step",
+              "value": "Starting Gemini AI development"
+            },
+            {
+              "name": "id",
+              "value": "={{ 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8); return v.toString(16); }) }}"
+            }
+          ]
+        },
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "json"
+            }
+          }
+        }
+      },
+      "id": "59240308-08b9-45e0-9be7-6ad3b3b55a80",
+      "name": "Create Generation Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        896,
+        0
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "D8ivuhUEOHEw1Jwz",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Handle Gemini response format\nconst geminiInput = $input.first().json;\nlet rawResponse;\n\nconsole.log('Full Gemini Input received:', JSON.stringify(geminiInput, null, 2));\n\n// Extract text from Gemini response structure - UPDATED LOGIC\nif (geminiInput.content && geminiInput.content.parts && geminiInput.content.parts[0]) {\n  // Gemini API v1 format (current)\n  rawResponse = geminiInput.content.parts[0].text;\n} else if (geminiInput.candidates && geminiInput.candidates[0] && geminiInput.candidates[0].content && geminiInput.candidates[0].content.parts) {\n  // Gemini API alternative format\n  rawResponse = geminiInput.candidates[0].content.parts[0].text;\n} else if (geminiInput.response) {\n  // Alternative Gemini format\n  rawResponse = geminiInput.response;\n} else if (geminiInput.text) {\n  // Direct text format\n  rawResponse = geminiInput.text;\n} else if (typeof geminiInput === 'string') {\n  // String response\n  rawResponse = geminiInput;\n} else {\n  // Debug: show what we actually received\n  throw new Error(`Unexpected Gemini response format. Received: ${JSON.stringify(geminiInput, null, 2)}`);\n}\n\n// Try to get job data\nlet jobData;\ntry {\n  jobData = $('Validate Input').first().json;\n} catch (e) {\n  // Create a fallback job data\n  jobData = {\n    storyId: \"fallback-story-id\",\n    jobId: `ai_create_gemini_${Date.now()}_fallback`\n  };\n}\n\nconsole.log('Extracted Gemini Response:', rawResponse);\nconsole.log('Response length:', rawResponse ? rawResponse.length : 'null/undefined');\n\n// Check if response is empty\nif (!rawResponse || rawResponse.trim() === '') {\n  throw new Error(`Gemini returned empty response. Check: 1) Prompt format, 2) Model configuration, 3) Token limits.`);\n}\n\n// Clean the response - Gemini sometimes adds markdown formatting\nlet cleanedResponse = rawResponse;\n// Remove markdown code blocks if present\ncleanedResponse = cleanedResponse.replace(/```json\\n?/g, '').replace(/```\\n?/g, '');\n// Remove any leading/trailing whitespace\ncleanedResponse = cleanedResponse.trim();\n\n// Parse the cleaned response as JSON\ntry {\n  const aiResponse = JSON.parse(cleanedResponse);\n  \n  // Validate response structure\n  if (!aiResponse.script || !aiResponse.script.lines) {\n    throw new Error(`Invalid Gemini response structure. Expected script.lines, got: ${Object.keys(aiResponse)}`);\n  }\n  \n  // Create script record with additional metadata\n  const scriptRecord = {\n    story_id: jobData.storyId,\n    title: aiResponse.script.title || 'Gemini Generated Script',\n    generation_method: 'ai_assisted',\n    ai_generation_job_id: jobData.jobId,\n    target_age: aiResponse.script.target_age || '5-10',\n    duration_minutes: aiResponse.script.duration_minutes || 9.5\n  };\n  \n  // Process script lines with enhanced audio fields\n  const scriptLines = aiResponse.script.lines.map((line, index) => {\n    // Validate and clean the line data\n    const processedLine = {\n      line_number: index + 1,\n      type: line.type || 'dialogue',\n      speaker: line.speaker || 'Narrator',\n      text: line.text || '[Empty line]',\n      emotion: line.emotion || 'Neutral',\n      ai_generated: true,\n      ai_confidence: 0.95,  // Higher confidence for Gemini 2.5\n      needs_review: !line.text || line.text.trim() === ''\n    };\n    \n    // Add audio-specific fields if they exist\n    if (line.pace) {\n      processedLine.pace = line.pace;\n    }\n    \n    if (line.pause_after !== undefined) {\n      processedLine.pause_after = line.pause_after;\n    } else {\n      // Default pause based on line type\n      processedLine.pause_after = line.type === 'narration' ? 1.0 : 0.5;\n    }\n    \n    // Extract sound effects if present in the text\n    if (line.text && line.text.includes('[SOUND:')) {\n      const soundMatch = line.text.match(/\\[SOUND:\\s*([^\\]]+)\\]/);\n      if (soundMatch) {\n        processedLine.sound_effect = soundMatch[1].trim();\n        // Remove sound effect tag from text for cleaner audio\n        processedLine.text = line.text.replace(/\\[SOUND:[^\\]]+\\]/g, '').trim();\n      }\n    }\n    \n    // Extract scene transitions\n    if (line.text && line.text.includes('[PAUSE')) {\n      const pauseMatch = line.text.match(/\\[PAUSE\\s*-\\s*([\\d.]+)\\s*seconds?\\]/i);\n      if (pauseMatch) {\n        processedLine.pause_after = parseFloat(pauseMatch[1]);\n        // Remove pause tag from text\n        processedLine.text = line.text.replace(/\\[PAUSE[^\\]]+\\]/g, '').trim();\n      }\n    }\n    \n    return processedLine;\n  });\n  \n  console.log(`Successfully processed Gemini response: ${scriptLines.length} lines`);\n  console.log(`Estimated duration: ${aiResponse.script.duration_minutes || 'unknown'} minutes`);\n  \n  // Calculate estimated audio duration for validation\n  const estimatedSeconds = scriptLines.reduce((total, line) => {\n    const wordCount = line.text.split(' ').length;\n    const speakingTime = wordCount / 2.5; // Average speaking rate: 150 words/minute\n    const pauseTime = line.pause_after || 0.5;\n    return total + speakingTime + pauseTime;\n  }, 0);\n  \n  const estimatedMinutes = estimatedSeconds / 60;\n  console.log(`Calculated duration: ${estimatedMinutes.toFixed(1)} minutes`);\n  \n  // Warn if duration seems off\n  if (estimatedMinutes < 8 || estimatedMinutes > 12) {\n    console.warn(`Warning: Estimated duration (${estimatedMinutes.toFixed(1)} min) outside target range (9-10 min)`);\n  }\n  \n  return { \n    scriptRecord, \n    scriptLines, \n    aiResponse,\n    metadata: {\n      estimatedDuration: estimatedMinutes,\n      totalLines: scriptLines.length,\n      dialogueLines: scriptLines.filter(l => l.type === 'dialogue').length,\n      narrationLines: scriptLines.filter(l => l.type === 'narration').length\n    }\n  };\n  \n} catch (parseError) {\n  console.error('Failed to parse Gemini response as JSON:', parseError.message);\n  console.error('Cleaned response:', cleanedResponse);\n  throw new Error(`Failed to parse Gemini response as JSON: ${parseError.message}. Response: ${cleanedResponse.substring(0, 500)}...`);\n}"
+      },
+      "id": "a63ea1c1-3d92-443d-874d-588720796c93",
+      "name": "Process Gemini Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1472,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/scripts",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "story_id",
+              "value": "={{ $('Create Story').first().json.id }}"
+            },
+            {
+              "name": "title",
+              "value": "={{ $('Create Story').first().json.title }}"
+            },
+            {
+              "name": "generation_method",
+              "value": "ai_assisted"
+            },
+            {
+              "name": "ai_generation_job_id",
+              "value": "={{ $('Create Generation Job').first().json.id }}"
+            },
+            {
+              "name": "id",
+              "value": "={{ 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) { var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8); return v.toString(16); }) }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "23b92ed3-7e39-4349-9f5b-586ddeaca87c",
+      "name": "Create Script",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1696,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "D8ivuhUEOHEw1Jwz",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the script content from Process Gemini Response\nconst geminiData = $('Process Gemini Response').first().json;\n\nconsole.log('=== PREPARE SCRIPT LINES DEBUG (GEMINI) ===');\nconsole.log('Gemini data keys:', Object.keys(geminiData));\n\n// Get the script_id from the Create Script node\nconst scriptId = $('Create Script').first().json.id;\nconsole.log('Script ID from Create Script node:', scriptId);\n\n// Function to map Gemini emotions to valid DB emotions\nfunction mapEmotionToValid(emotion) {\n  const emotionMap = {\n    'warm': 'happy',\n    'mysterious': 'neutral',\n    'ominous': 'scared',\n    'urgent': 'excited',\n    'determined': 'excited',\n    'worried': 'sad',\n    'hopeful': 'happy',\n    'descriptive': 'neutral',\n    'confused': 'neutral',\n    'reassuring': 'happy',\n    'brave': 'excited',\n    'tense': 'scared',\n    'curious': 'excited',\n    'knowing': 'neutral',\n    'triumphant': 'excited',\n    'reflective': 'neutral',\n    'kind': 'happy'\n  };\n  \n  const lowerEmotion = (emotion || 'neutral').toLowerCase();\n  return emotionMap[lowerEmotion] || 'neutral';\n}\n\n// Get the script lines from Gemini processing\nlet scriptLines = [];\n\nif (geminiData.scriptLines && Array.isArray(geminiData.scriptLines)) {\n  // Use the processed script lines from Gemini\n  scriptLines = geminiData.scriptLines.map((line, index) => ({\n    script_id: scriptId,\n    line_number: line.line_number || (index + 1),\n    speaker_name: line.speaker || 'Narrator',\n    line_type: line.type || 'dialogue',\n    text_content: line.text || '[Empty line]',\n    emotion_type: mapEmotionToValid(line.emotion),\n    emotion_intensity: 'medium',\n    is_generated: true\n  }));\n  \n  console.log('Using Gemini script lines:', scriptLines.length, 'lines');\n} else {\n  // Fallback if no script lines found\n  console.log('No script lines found, using fallback');\n  const fallbackScript = `FADE IN:\\n\\nINT. SCENE - DAY\\n\\nNARRATOR\\n(calm)\\nOur story begins with Gemini AI...\\n\\nCHARACTER\\n(excited)\\nThis is a Gemini-generated placeholder script!\\n\\nNARRATOR\\n(measured)\\nThe story continues with enhanced audio features.\\n\\nFADE OUT.`;\n  \n  const lines = fallbackScript.split('\\n').filter(line => line.trim() !== '');\n  \n  scriptLines = lines.map((line, index) => {\n    const trimmedLine = line.trim();\n    \n    let lineType = 'dialogue';\n    let speakerName = 'Narrator';\n    \n    if (trimmedLine.startsWith('FADE') || trimmedLine.startsWith('INT.') || trimmedLine.startsWith('EXT.')) {\n      lineType = 'stage_direction';\n      speakerName = 'Narrator';\n    } else if (trimmedLine.match(/^[A-Z\\s]+$/) && !trimmedLine.includes(':') && !trimmedLine.includes('.')) {\n      lineType = 'dialogue';\n      speakerName = trimmedLine.trim();\n    } else if (trimmedLine.match(/^\\((.+)\\)$/)) {\n      lineType = 'stage_direction';\n      speakerName = 'Narrator';\n    }\n    \n    return {\n      script_id: scriptId,\n      line_number: index + 1,\n      speaker_name: speakerName,\n      line_type: lineType,\n      text_content: trimmedLine,\n      emotion_type: 'neutral',\n      emotion_intensity: 'medium',\n      is_generated: true\n    };\n  });\n}\n\nconsole.log('Prepared script lines for database:', scriptLines.length);\nconsole.log('Sample line with mapped emotion:', {\n  original_emotion: geminiData.scriptLines?.[0]?.emotion,\n  mapped_emotion: scriptLines[0]?.emotion_type\n});\n\n// Validate script lines before returning\nconst validatedLines = scriptLines.filter(line => {\n  if (!line.script_id || !line.text_content || line.text_content.trim() === '') {\n    console.warn('Filtering out invalid line:', line);\n    return false;\n  }\n  return true;\n});\n\nconsole.log('Validated lines count:', validatedLines.length);\n\n// Return the script lines array\nreturn validatedLines;"
+      },
+      "id": "7b390140-9933-4880-b03c-869bcaf4b10b",
+      "name": "Prepare Script Lines",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1920,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "DELETE",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/script_lines?script_id=eq.{{ $('Create Script').first().json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2144,
+        0
+      ],
+      "id": "d941fb85-98be-4885-bd18-caa9d4f79e5e",
+      "name": "Delete Existing Lines",
+      "credentials": {
+        "supabaseApi": {
+          "id": "D8ivuhUEOHEw1Jwz",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/script_lines",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($('Prepare Script Lines').first().json) }}",
+        "options": {}
+      },
+      "id": "fdc5d402-7391-4ab6-ac80-6530caabfe89",
+      "name": "Create Script Lines",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2368,
+        0
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "supabaseApi": {
+          "id": "D8ivuhUEOHEw1Jwz",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/ai_generation_jobs?id=eq.{{ $('Create Generation Job').first().json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            },
+            {
+              "name": "Prefer",
+              "value": "return=representation"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "completed"
+            },
+            {
+              "name": "progress",
+              "value": "100"
+            },
+            {
+              "name": "current_step",
+              "value": "Gemini AI-assisted creation completed"
+            },
+            {
+              "name": "script_id",
+              "value": "={{ $('Create Script').first().json.id }}"
+            },
+            {
+              "name": "completed_at",
+              "value": "={{ new Date().toISOString() }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "aa0ddfb9-c1bd-4e1c-8bb3-2e40fc18c154",
+      "name": "Complete Job",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2592,
+        0
+      ],
+      "credentials": {
+        "supabaseApi": {
+          "id": "D8ivuhUEOHEw1Jwz",
+          "name": "Supabase account 2"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the processed script data from previous nodes\nconst scriptData = $('Process Gemini Response').first().json;\nconst jobData = $('Validate Input').first().json;\n\nconsole.log('Building response with Gemini script data:', scriptData);\nconsole.log('Job data:', jobData);\n\n// Build the response object\nconst response = {\n  success: true,\n  message: 'Gemini AI script generation completed successfully',\n  data: {\n    jobId: jobData.jobId || 'unknown',\n    storyId: jobData.storyId || 'unknown',\n    script: {\n      title: scriptData.aiResponse?.script?.title || 'Gemini Generated Script',\n      lines: scriptData.scriptLines || [],\n      generatedBy: 'Gemini 2.0 Pro'\n    },\n    metadata: {\n      characters: scriptData.aiResponse?.characters || [],\n      expandedConcept: scriptData.aiResponse?.expandedConcept || '',\n      generatedAt: new Date().toISOString(),\n      model: 'gemini-2.0-pro',\n      contextWindow: '2M tokens'\n    },\n    status: 'completed'\n  }\n};\n\nconsole.log('Final Gemini response object:', response);\nreturn response;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2816,
+        0
+      ],
+      "id": "67056006-859d-466d-bb1d-76bd2977370d",
+      "name": "Build Response"
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{$input.first().json}}",
+        "options": {}
+      },
+      "id": "1d5a0ef6-09f7-4247-81aa-3d35a453f155",
+      "name": "Success Response",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [
+        3040,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "modelId": {
+          "__rl": true,
+          "value": "models/gemini-2.5-pro",
+          "mode": "list",
+          "cachedResultName": "models/gemini-2.5-pro"
+        },
+        "messages": {
+          "values": [
+            {
+              "content": "=const updatedPrompt = `You are a professional children's audio drama scriptwriter creating immersive bedtime stories for 5-10 year olds.\n\nBEDTIME STORY REQUIREMENTS:\n\nThis story will be played as a child settles into bed and prepares to fall asleep. The timing is critical to the bedtime routine:\n\n⚠️ TARGET DURATION: Exactly 10 minutes (9.5-10.5 minutes)\n\nWhy this matters:\n- Too short (5-6 minutes): Child is still alert and restless, not ready for sleep\n- Just right (10 minutes): Perfect amount of time for a child to relax, get comfortable, and begin drifting off\n- Too long (15+ minutes): Child falls asleep before the ending and misses the warm, satisfying conclusion\n\nTo achieve 10 minutes of audio, you MUST generate EXACTLY 130-140 script entries:\n- 75-85 dialogue entries (5-12 words each = 2.5-4.5 seconds)\n- 55-60 narration entries (12-20 words each = 5-8 seconds)\n\nStories with fewer than 130 entries are incomplete and unusable for bedtime. Track your progress as you write.\n\nNARRATIVE VOICE & TONE:\nWrite with a warm, conspiratorial tone—like a mischievous storyteller who delights in surprising children. The narrator should:\n- Occasionally address the listening child directly (\"Now, you might think...\", \"I bet you're wondering...\")\n- Use deliciously specific details (don't say \"very big,\" say \"enormous as three elephants stacked in a tower\")\n- Invent wonderful adjectives when ordinary words won't do (\"splendiferous,\" \"fantasmagorical\", \"squishous\")\n- Treat small moments as tremendously important and dramatic ones with playful understatement\n\nCHARACTER PHILOSOPHY:\n- If a character is kind, make them unexpectedly, memorably kind (in specific, odd ways)\n- If a character is mean, make them absurdly, almost comically mean (not scary, but ridiculous)\n- Give characters specific quirks, not generic traits (someone who \"loves adventure\" is boring; someone who \"collects interesting pebbles and names them\" is memorable)\n- Magic should be messy, unpredictable, and have funny consequences\n\nAVOID GENERIC CHARACTERS:\n❌ \"A brave knight\" \n✅ \"A knight who was brave about dragons but terrified of spiders\"\n\n❌ \"An evil witch\"\n✅ \"A witch whose spells always worked backwards and made her furious\"\n\n❌ \"A wise old wizard\"\n✅ \"A wizard who was extremely wise but couldn't remember where he left his hat (or his breakfast, or sometimes his shoes)\"\n\nLANGUAGE GUIDELINES:\n- Choose precise, vivid verbs over adverbs (\"scuttled\" not \"walked quickly\")\n- Use surprising comparisons (\"as nervous as a rabbit at a wolf convention\")\n- Invent compound words when they sound delicious (\"snozzwangling\", \"whizzpopping\")\n- Avoid tired phrases: no \"once upon a time\", no \"happily ever after\", no \"beautiful princess\" without making it interesting\n\nEMOTIONAL RANGE:\nBalance mischief with warmth—stories should feel playful and slightly cheeky, but ultimately kind-hearted. Even villains should be more ridiculous than frightening. The child should go to sleep feeling delighted, not anxious.\n\nSTORY CONCEPT:\n{{$('Validate Input').first().json.concept.initialConcept}}\n\n{{$('Validate Input').first().json.characters && $('Validate Input').first().json.characters.length > 0 ? 'REQUIRED CHARACTERS (use these EXACT names):\\\\n' + $('Validate Input').first().json.characters.map(c => '- ' + c.name + (c.description ? ': ' + c.description : '')).join('\\\\n') : ''}}\n\nSTORY STRUCTURE:\n\n⚠️ This MUST be a COMPLETE 10-minute bedtime story (130-140 script entries total)\n\nACT 1 - SETTLING IN (35-40 entries) [Approximately entries 1-40]:\nThe child is still wiggling and getting comfortable. Keep them engaged but calm.\n\n- Opening 10 entries: Hook opening with immediate intrigue (narrator introduces something peculiar)\n- Next 15 entries: Character introductions (make them memorable with specific quirks)\n- Final 15 entries: Present main challenge/quest (make it sound important and slightly absurd)\n\n✓ CHECKPOINT: By this point, you should have approximately 40 script entries. Child should be relaxed and interested.\n\nACT 2A - RELAXING (35-40 entries) [Approximately entries 41-80]:\nThe child is settling down. Maintain gentle momentum with playful adventure.\n\n- First 20 entries: First obstacle and character reactions (things go wrong in unexpected ways)\n- Next 20 entries: Action sequence and discovery (messy magic, surprising solutions)\n\n✓ CHECKPOINT: By this point, you should have approximately 80 script entries. Child should be drowsy but following along.\n\nACT 2B - DRIFTING (35-40 entries) [Approximately entries 81-120]:\nThe child is very relaxed, eyes getting heavy. Keep the story flowing with warmth.\n\n- First 20 entries: New complication and emotional moment (characters help each other in odd but touching ways)\n- Next 20 entries: Team effort building to climax (everyone's quirks become useful)\n\n✓ CHECKPOINT: By this point, you should have approximately 120 script entries. Child should be nearly asleep.\n\nACT 3 - GOODNIGHT (25-30 entries) [Approximately entries 121-140]:\nThe child is almost asleep. Gentle, satisfying resolution that feels like a warm hug.\n\n- First 10 entries: Climactic solution (clever and slightly ridiculous)\n- Final 10-20 entries: Victory, lesson learned, warm closing (narrator winks at the listener)\n\n✓ FINAL CHECKPOINT: Complete the story at 130-140 script entries. Child drifts off to sleep feeling safe and delighted.\n\nDIALOGUE RULES:\n- Keep under 15 words per entry\n- Natural, age-appropriate language with character-specific speech patterns\n- Include interruptions and emotions\n- Make villains sound pompous and ridiculous, not frightening\n- Give heroes distinct voices (brave doesn't mean perfect)\n\nNARRATION REQUIREMENTS:\n- Rich sensory details (sounds, textures, atmosphere)\n- Scene transitions with personality: \"Meanwhile, in the absolutely disastrous kitchen...\", \"Three minutes later (which felt like three hours)...\"\n- Paint vivid pictures with surprising comparisons\n- Break the fourth wall occasionally to build rapport with the listening child\n- Use the narrator to build anticipation and add humor\n\nPACING CONTROLS:\npace: \"slow\", \"measured\", \"normal\", \"quick\", \"excited\", \"hushed\"\npause_after:\n- Quick dialogue: 0.3-0.5 seconds\n- Normal dialogue: 0.5-0.8 seconds  \n- End of thought: 1.0-1.5 seconds\n- Scene transition: 2.0-3.0 seconds\n- Dramatic narrator aside: 1.5-2.0 seconds\n\nEMOTIONAL PROGRESSION:\nAct 1: Curious → Excited → Concerned (but not scared)\nAct 2A: Determined → Challenged → Creative\nAct 2B: Doubtful → Supportive → Brave (in their own way)\nAct 3: Triumphant → Grateful → Content (with a satisfied chuckle)\n\nCHARACTER VOICE ASSIGNMENT:\nFor each speaking character in your story, identify their gender for voice assignment:\n- \"male\" for male characters (boys, men, kings, princes, fathers, wizards, etc.)\n- \"female\" for female characters (girls, women, queens, princesses, mothers, witches, etc.)\n- \"neutral\" for ambiguous/non-binary characters or magical creatures where gender is not specified\n\nRETURN FORMAT:\n{\n  \"script\": {\n    \"title\": \"[5 words max, make it intriguing]\",\n    \"target_age\": \"5-10\",\n    \"duration_minutes\": 9.5,\n    \"total_lines\": [130-140],\n    \"characters\": [\n      {\n        \"name\": \"Narrator\",\n        \"gender\": \"male\",\n        \"role\": \"narrator\"\n      },\n      {\n        \"name\": \"[Character Name]\",\n        \"gender\": \"male|female|neutral\",\n        \"role\": \"protagonist|antagonist|supporting\"\n      }\n      // List ALL speaking characters including Narrator\n    ],\n    \"lines\": [\n      {\n        \"type\": \"narration\",\n        \"speaker\": \"Narrator\", \n        \"text\": \"[12-20 words with specific, vivid details and playful tone]\",\n        \"emotion\": \"[Specific emotion]\",\n        \"pace\": \"measured\",\n        \"pause_after\": 2.0\n      },\n      {\n        \"type\": \"dialogue\",\n        \"speaker\": \"[Character Name]\",\n        \"text\": \"[5-12 words that reveal personality through speech patterns]\", \n        \"emotion\": \"[Specific emotion]\",\n        \"pace\": \"normal\",\n        \"pause_after\": 0.5\n      }\n      // Continue for ALL 130-140 entries\n    ]\n  }\n}\n\n⚠️ CRITICAL FORMATTING RULE:\nThe \"text\" field should contain ONLY the actual dialogue or narration. \nDO NOT include prefixes like \"Line 1:\", \"Line 2:\", \"1.\", \"2.\", etc.\n\nCORRECT EXAMPLE:\n{ \"text\": \"Once upon a time, in a village where cats wore absolutely ridiculous hats...\" }\n\nINCORRECT EXAMPLE:\n{ \"text\": \"Line 1: Once upon a time, in a village where cats wore absolutely ridiculous hats...\" }\n{ \"text\": \"1. Once upon a time, in a village where cats wore absolutely ridiculous hats...\" }\n\nThe line numbering is handled automatically by the array structure. Your text should be pure storytelling.\n\nCRITICAL REMINDERS: \n- ⚠️ GENERATE EXACTLY 130-140 SCRIPT ENTRIES - Track your progress as you write\n- Stories under 130 entries are too short for a 10-minute audio drama and will not work for the bedtime routine\n- DO NOT include line numbers in the text field (no \"Line 1:\", \"Line 2:\", etc.)\n- Include ALL speaking characters in the \"characters\" array with their gender\n- Character names in \"characters\" array must EXACTLY match speaker names in \"lines\" array\n- Make every character memorable with specific quirks\n- Keep villains absurdly mean, not frightening\n- Narrator should feel like a friend telling a delicious secret\n- Invent wonderful words when they make the story more delightful\n- The child should go to sleep feeling delighted, not anxious\n- Return ONLY valid JSON\n- Complete the full story arc to 130-140 entries\n- If approaching token limits, prioritize completing all required entries`;"
+            }
+          ]
+        },
+        "options": {
+          "maxOutputTokens": 25000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.googleGemini",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        0
+      ],
+      "id": "1de2e3d8-ef15-4a18-90b3-1c7dd8dd173e",
+      "name": "Message a model",
+      "retryOnFail": false,
+      "waitBetweenTries": 3000,
+      "credentials": {
+        "googlePalmApi": {
+          "id": "XP93EfMozMDBEaUm",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Webhook Trigger": {
+      "main": [
+        [
+          {
+            "node": "Validate Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Input": {
+      "main": [
+        [
+          {
+            "node": "Create Story",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Story": {
+      "main": [
+        [
+          {
+            "node": "Create Story Concept",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Story Concept": {
+      "main": [
+        [
+          {
+            "node": "Create Generation Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process Gemini Response": {
+      "main": [
+        [
+          {
+            "node": "Create Script",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Script": {
+      "main": [
+        [
+          {
+            "node": "Prepare Script Lines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Script Lines": {
+      "main": [
+        [
+          {
+            "node": "Delete Existing Lines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Delete Existing Lines": {
+      "main": [
+        [
+          {
+            "node": "Create Script Lines",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Script Lines": {
+      "main": [
+        [
+          {
+            "node": "Complete Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Job": {
+      "main": [
+        [
+          {
+            "node": "Build Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Response": {
+      "main": [
+        [
+          {
+            "node": "Success Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Generation Job": {
+      "main": [
+        [
+          {
+            "node": "Message a model",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Message a model": {
+      "main": [
+        [
+          {
+            "node": "Process Gemini Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f6dc34e7-b8cf-4ba8-92fe-d36561b494c4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "907ab9bfe98db377a72a66df1b347ab59bf71d9112c7983facef6dbf9c6f87d3"
+  },
+  "id": "VCbAoUaCxXoVGWCP",
+  "tags": []
+}
