@@ -4,16 +4,17 @@
 import { getVoiceAssignments } from './cartesiaVoiceService.js';
 import { supabase } from '../lib/supabase.js';
 
-const FULL_SCRIPT_TTS_WEBHOOK = import.meta.env.VITE_N8N_FULL_SCRIPT_TTS_WEBHOOK;
+const FULL_SCRIPT_TTS_WEBHOOK = "https://learncastai.app.n8n.cloud/webhook/full-script-tts-dev"; // ⚠️ DEV MODE: Using Lambda v2 workflow
+// const FULL_SCRIPT_TTS_WEBHOOK = import.meta.env.VITE_N8N_FULL_SCRIPT_TTS_WEBHOOK;
 const POLLING_INTERVAL = 5000; // 5 seconds
 const MAX_POLLING_TIME = 1200000; // 20 minutes
 
-// Helper function to poll Supabase for production status
+// Poll Supabase for audio production completion
 const pollProductionStatus = async (productionId, startTime = Date.now()) => {
   const elapsed = Date.now() - startTime;
-  
+
   if (elapsed > MAX_POLLING_TIME) {
-    throw new Error('Production polling timed out after 20 minutes');
+    throw new Error('Audio production polling timed out after 20 minutes');
   }
 
   const { data, error } = await supabase
@@ -27,32 +28,26 @@ const pollProductionStatus = async (productionId, startTime = Date.now()) => {
     throw error;
   }
 
-  console.log(`🔄 Polling production ${productionId}: status=${data.status}, progress=${data.progress}%`);
+  console.log(`🔄 Polling production ${productionId}: status=${data.status || 'unknown'}, progress=${data.progress || 0}%`);
 
   // Check if completed
-  if (data.status === 'completed' && data.audio_url) {
-    console.log('✅ Production completed!', data);
-    console.log('🎵 Audio URL:', data.audio_url);
+  if (data.status === 'completed' || data.status === 'ready') {
+    console.log('✅ Audio production completed!', data);
+    const audioUrl = data.audio_url || '';
     return {
       success: true,
       production_id: data.id,
-      audioUrl: data.audio_url,
-      totalDuration: data.audio_duration || 0,
-      status: 'completed',
-      timingMetadata: {
-        total_duration: data.audio_duration || 0,
-        lines: [] // Can be populated later if needed
-      },
-      metadata: {
-        total_lines: data.total_lines,
-        completed_at: data.completed_at
-      }
+      audioUrl,
+      audio_url: audioUrl,
+      duration: data.audio_duration || data.duration || data.estimated_duration,
+      status: data.status,
+      lines_processed: data.total_lines
     };
   }
 
   // Check if failed
   if (data.status === 'failed' || data.status === 'error') {
-    throw new Error(`Production failed: ${data.error_message || 'Unknown error'}`);
+    throw new Error(`Audio production failed: ${data.error_message || 'Unknown error'}`);
   }
 
   // Still processing, wait and poll again
@@ -76,13 +71,14 @@ export const generateFullScriptTTS = async (scriptData, user) => {
   const payload = {
     user_id: user.id,
     script_id: scriptData.id,
-    
+    title: scriptData.title || 'Untitled Production',
+
     // Script data in the format n8n expects
     script_data: {
       script_lines: scriptData.lines.map((line, index) => {
         const speaker = line.speaker || 'Narrator';
         const assignedVoiceId = voiceAssignments[speaker] || 'e00d0e4c-a5c8-443f-a8a3-473eb9a62355';
-        
+
         return {
           line_id: line.id || crypto.randomUUID(),
           line_index: index,
@@ -91,19 +87,20 @@ export const generateFullScriptTTS = async (scriptData, user) => {
           emotion: line.emotion || 'neutral',
           voice_id: assignedVoiceId,
           cartesia_voice_id: assignedVoiceId,
-          line_type: line.type || 'dialogue'
+          line_type: line.type || 'dialogue',
+          pause_after: line.pause_after // ✅ NEW: Pass pause data for Lambda v2
         };
       }),
       title: scriptData.title || 'Untitled Production',
       total_lines: scriptData.lines.length
     },
-    
+
     production_settings: {
       audio_format: 'wav',
       sample_rate: 22050,
       pause_between_lines: 0.5
     },
-    
+
     voice_assignments: voiceAssignments
   };
 
@@ -137,17 +134,17 @@ export const generateFullScriptTTS = async (scriptData, user) => {
     }
 
     const productionId = result.production_id;
-    console.log(`🔄 Starting to poll production ${productionId} every ${POLLING_INTERVAL/1000}s...`);
+    console.log(`🔄 Starting to poll production ${productionId} every ${POLLING_INTERVAL / 1000}s...`);
 
     // Start polling Supabase for completion
     const finalResult = await pollProductionStatus(productionId);
-    
+
     console.log('✅ Full Script TTS generation completed:', finalResult);
     return finalResult;
 
   } catch (error) {
     console.error('❌ Full Script TTS generation failed:', error);
-    
+
     return {
       success: false,
       error: error.message,

@@ -324,12 +324,10 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
           className="w-full sm:w-auto px-4 py-3 sm:py-1.5 bg-white/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 text-sm font-display font-semibold focus:outline-none focus:border-dream-glow/50 transition-all"
         >
           <option value="">All Styles</option>
-          <option value="warm">Warm</option>
-          <option value="professional">Professional</option>
-          <option value="youthful">Youthful</option>
-          <option value="mature">Mature</option>
           <option value="narrator">Narrator</option>
           <option value="character">Character</option>
+          <option value="warm">Warm</option>
+          <option value="youthful">Youthful</option>
         </select>
       </div>
 

@@ -1,0 +1,664 @@
+{
+    "name": "FanCast AI - Full TTS Production v6 (DEV - Node 22)",
+    "nodes": [
+        {
+            "parameters": {
+                "httpMethod": "POST",
+                "path": "full-script-tts-dev",
+                "responseMode": "responseNode",
+                "options": {}
+            },
+            "id": "3ca8c5e0-8535-4640-9540-6570557776ae",
+            "name": "Webhook - Full Script TTS",
+            "type": "n8n-nodes-base.webhook",
+            "typeVersion": 1,
+            "position": [
+                0,
+                0
+            ],
+            "webhookId": "full-script-tts-dev"
+        },
+        {
+            "parameters": {
+                "functionCode": "// Validate and process script input\nconst body = items[0].json.body || items[0].json;\n\n// Validate required fields\nif (!body.user_id || !body.script_id || !body.script_data) {\n  throw new Error('Missing required fields: user_id, script_id, or script_data');\n}\n\n// Generate production ID using UUID\nconst productionId = require('crypto').randomUUID();\n\n// Extract script lines\nconst scriptLines = body.script_data.script_lines || [];\nif (scriptLines.length === 0) {\n  throw new Error('No script lines provided');\n}\n\n// Process voice settings\nconst voiceSettings = body.voice_settings || {};\nconst generationSettings = body.generation_settings || {\n  audio_format: 'wav',\n  quality: 'high'\n};\n\n// Calculate estimated duration (rough estimate: 150 words per minute)\nconst totalWords = scriptLines.reduce((acc, line) => {\n  return acc + (line.text || '').split(' ').length;\n}, 0);\nconst estimatedDuration = (totalWords / 150) * 60; // in seconds\n\nreturn {\n  json: {\n    production_id: productionId,\n    user_id: body.user_id,\n    script_id: body.script_id,\n    title: body.title || 'Untitled Production',\n    script_lines: scriptLines,\n    voice_settings: voiceSettings,\n    generation_settings: generationSettings,\n    estimated_duration: estimatedDuration,\n    total_lines: scriptLines.length,\n    created_at: new Date().toISOString(),\n    status: 'processing',\n    progress: 0\n  }\n};"
+            },
+            "id": "2e6bceb0-4df6-4b3b-aba7-fb5ab5109c7b",
+            "name": "Validate & Process Input",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                224,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "tableId": "audio_productions",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "id",
+                            "fieldValue": "={{ $json.production_id }}"
+                        },
+                        {
+                            "fieldId": "user_id",
+                            "fieldValue": "={{ $json.user_id }}"
+                        },
+                        {
+                            "fieldId": "script_id",
+                            "fieldValue": "={{ $json.script_id }}"
+                        },
+                        {
+                            "fieldId": "title",
+                            "fieldValue": "={{ $json.title }}"
+                        },
+                        {
+                            "fieldId": "status",
+                            "fieldValue": "processing"
+                        },
+                        {
+                            "fieldId": "total_lines",
+                            "fieldValue": "={{ $json.total_lines }}"
+                        }
+                    ]
+                }
+            },
+            "id": "0d683406-349b-41a8-a165-3e446d0b419e",
+            "name": "Create Production Record",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                448,
+                0
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "D8ivuhUEOHEw1Jwz",
+                    "name": "Supabase account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Prepare immediate response with production_id for frontend polling\nconst productionId = $('Validate & Process Input').first().json.production_id;\nreturn { json: { success: true, message: 'Processing started', production_id: productionId } };"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                672,
+                0
+            ],
+            "id": "1fb78082-c49e-4aaa-99db-0a05147947d9",
+            "name": "Prepare Immediate Response"
+        },
+        {
+            "parameters": {
+                "respondWith": "json",
+                "responseBody": "={{ JSON.stringify($json) }}",
+                "options": {
+                    "responseHeaders": {
+                        "entries": [
+                            {
+                                "name": "Content-Type",
+                                "value": "application/json"
+                            }
+                        ]
+                    }
+                }
+            },
+            "type": "n8n-nodes-base.respondToWebhook",
+            "typeVersion": 1.4,
+            "position": [
+                896,
+                0
+            ],
+            "id": "a8ddb82b-91ff-4812-aec5-f3ce6d2dd7c7",
+            "name": "Respond to Webhook"
+        },
+        {
+            "parameters": {
+                "operation": "getAll",
+                "tableId": "voice_assignments",
+                "matchType": "allFilters",
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "script_id",
+                            "condition": "eq",
+                            "keyValue": "={{ $('Validate & Process Input').first().json.script_id }}"
+                        }
+                    ]
+                }
+            },
+            "id": "ab545af7-b713-4f46-af10-c4ded0fba07e",
+            "name": "Fetch Voice Assignments",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                1120,
+                0
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "D8ivuhUEOHEw1Jwz",
+                    "name": "Supabase account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "functionCode": "// Format Voice Assignments - with better error handling\nconst productionData = $('Create Production Record').first().json;\nconst assignments = $input.all();\n\nconsole.log(`📚 Processing ${assignments.length} voice assignments`);\n\n// Convert array to speaker→voice mapping\nconst voiceMap = {};\n\n// Check if we have assignments\nif (assignments && assignments.length > 0) {\n  assignments.forEach(item => {\n    const assignment = item.json;\n    if (assignment && assignment.character_name && assignment.cartesia_voice_id) {\n      voiceMap[assignment.character_name] = assignment.cartesia_voice_id;\n      console.log(`🎭 ${assignment.character_name} → ${assignment.cartesia_voice_id}`);\n    }\n  });\n} else {\n  console.warn('⚠️ No voice assignments found, will use defaults');\n}\n\n// Add default narrator if missing\nif (!voiceMap['Narrator']) {\n  voiceMap['Narrator'] = 'e00d0e4c-a5c8-443f-a8a3-473eb9a62355';\n  console.log('📌 Added default narrator voice');\n}\n\nreturn {\n  json: {\n    voice_assignments: voiceMap,\n    has_assignments: Object.keys(voiceMap).length > 0,\n    assignment_count: Object.keys(voiceMap).length\n  }\n};"
+            },
+            "id": "231604b4-9619-4f19-abcd-92c21cf0c945",
+            "name": "Format Voice Assignments",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                1344,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "functionCode": "// Split Script Lines for Individual TTS Generation - SONIC 3.0 + EMOTION + PAUSE_AFTER\nconst webhookData = $('Validate & Process Input').first().json;\nconst productionData = $input.first().json;\nconst scriptLines = webhookData.script_lines || [];\nconst voiceAssignments = productionData.voice_assignments || {};\n\nif (!scriptLines || scriptLines.length === 0) {\n  throw new Error('No script lines provided for TTS generation');\n}\n\n// Check if we have voice assignments\nif (!productionData.has_assignments) {\n  console.warn('⚠️ No voice assignments found, using defaults for all characters');\n}\n\nconsole.log(`🎬 Processing ${scriptLines.length} lines for individual TTS generation`);\nconsole.log(`🎭 Voice assignments:`, voiceAssignments);\n\n// Track missing voices\nconst missingVoices = new Set();\n\n// Sonic 3.0 Default Fallback Voices\nconst defaultVoices = {\n  female: 'cbaf8084-f009-4838-a096-07ee2e6612b1', // Maya\n  male: 'f4a3a8e4-a43c-4e3f-9e3c-7ab5e8e8e8e8', // Default male\n  narrator: 'e00d0e4c-a5c8-443f-a8a3-473eb9a62355' // Default narrator\n};\n\nconst outputItems = scriptLines.map((line, index) => {\n  const speaker = line.speaker || 'Narrator';\n  let voiceId = voiceAssignments[speaker];\n  \n  if (!voiceId) {\n    voiceId = line.cartesia_voice_id || line.voice_id || defaultVoices.narrator;\n    missingVoices.add(speaker);\n  }\n  \n  // Map emotion to Cartesia speed/stability\n  const emotionMap = {\n    happy: { speed: 'normal', stability: 0.5 },\n    sad: { speed: 'slow', stability: 0.7 },\n    excited: { speed: 'fast', stability: 0.3 },\n    scared: { speed: 'fast', stability: 0.4 },\n    neutral: { speed: 'normal', stability: 0.5 }\n  };\n  const emotion = (line.emotion || 'neutral').toLowerCase();\n  const emotionSettings = emotionMap[emotion] || emotionMap.neutral;\n  \n  // Build Cartesia payload for Sonic 3.0\n  const cartesiaPayload = {\n    model_id: 'sonic-2',\n    transcript: line.text,\n    voice: {\n      mode: 'id',\n      id: voiceId\n    },\n    output_format: {\n      container: 'wav',\n      encoding: 'pcm_s16le',\n      sample_rate: 44100\n    },\n    language: 'en'\n  };\n  \n  return {\n    json: {\n      line_index: index,\n      speaker: speaker,\n      text: line.text,\n      emotion: emotion,\n      voice_id: voiceId,\n      pause_after: line.pause_after || (line.line_type === 'narration' ? 1.0 : 0.5),\n      cartesia_payload: cartesiaPayload,\n      s3_key: `productions/${webhookData.user_id}/${webhookData.production_id}/lines/line_${String(index).padStart(3, '0')}_${speaker.replace(/[^a-zA-Z0-9]/g, '_')}.wav`\n    }\n  };\n});\n\nif (missingVoices.size > 0) {\n  console.warn(`⚠️ Missing voice assignments for: ${[...missingVoices].join(', ')}`);\n}\n\nconsole.log(`✅ Prepared ${outputItems.length} items for TTS generation`);\nreturn outputItems;"
+            },
+            "id": "bdd67237-d171-4f6d-92ca-251b3b132ce7",
+            "name": "Split Script Lines",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                1568,
+                0
+            ],
+            "alwaysOutputData": true
+        },
+        {
+            "parameters": {
+                "method": "POST",
+                "url": "https://api.cartesia.ai/tts/bytes",
+                "authentication": "predefinedCredentialType",
+                "nodeCredentialType": "httpBearerAuth",
+                "sendHeaders": true,
+                "headerParameters": {
+                    "parameters": [
+                        {
+                            "name": "Cartesia-Version",
+                            "value": "2024-06-30"
+                        }
+                    ]
+                },
+                "sendBody": true,
+                "specifyBody": "json",
+                "jsonBody": "={{ JSON.stringify($json.cartesia_payload) }}",
+                "options": {
+                    "batching": {
+                        "batch": {
+                            "batchSize": 3
+                        }
+                    },
+                    "response": {
+                        "response": {
+                            "responseFormat": "file"
+                        }
+                    },
+                    "timeout": 120000
+                }
+            },
+            "id": "122cedbf-3e83-4213-a9ff-82ca6b0c488e",
+            "name": "Cartesia TTS Generation",
+            "type": "n8n-nodes-base.httpRequest",
+            "typeVersion": 3,
+            "position": [
+                1792,
+                0
+            ],
+            "alwaysOutputData": true,
+            "credentials": {
+                "httpBearerAuth": {
+                    "id": "4X3ZLANwREGy1mcb",
+                    "name": "Bearer Auth account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "functionCode": "// Get all audio items from Cartesia TTS Generation\nconst allItems = $input.all();\nconsole.log(`📋 Preparing ${allItems.length} audio files for individual S3 upload`);\n\nif (!allItems || allItems.length === 0) {\n  throw new Error('No audio data received from Cartesia TTS Generation');\n}\n\n// Get input data from the first node\nlet inputData;\ntry {\n  inputData = $('Validate & Process Input').first().json;\n} catch (error) {\n  inputData = {\n    user_id: 'unknown-user',\n    production_id: 'unknown-production'\n  };\n}\n\nconst userId = inputData.user_id || 'unknown-user';\nconst productionId = inputData.production_id || 'unknown-production';\nconst timestamp = Date.now();\n\nconst audioFileList = [];\nconst results = [];\n\n// Process each audio item\nfor (let index = 0; index < allItems.length; index++) {\n  const item = allItems[index];\n  const lineData = item.json;\n  \n  // Generate S3 key\n  const speakerSafe = (lineData.speaker || 'Unknown').replace(/[^a-zA-Z0-9]/g, '_');\n  const s3Key = `productions/${userId}/${productionId}/lines/line_${String(index).padStart(3, '0')}_${speakerSafe}.wav`;\n  \n  audioFileList.push({\n    s3Key: s3Key,\n    speaker: lineData.speaker || 'Unknown',\n    lineIndex: index,\n    pauseAfter: lineData.pause_after || 0.5\n  });\n  \n  results.push({\n    json: {\n      ...lineData,\n      s3_key: s3Key,\n      line_index: index\n    },\n    binary: item.binary\n  });\n}\n\n// Store the audio file list and final output key on the first item\nconst finalOutputKey = `productions/${userId}/${productionId}/final/full_audio_${timestamp}.wav`;\n\nif (results.length > 0) {\n  results[0].json.audioFileList = audioFileList;\n  results[0].json.finalOutputKey = finalOutputKey;\n}\n\nconsole.log(`✅ Prepared ${results.length} files for S3 upload`);\nconsole.log(`📁 Final output key: ${finalOutputKey}`);\n\nreturn results;"
+            },
+            "id": "096adfcc-b1b8-4726-96d2-da2923a204cd",
+            "name": "Process Multi-Voice Audio",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                2016,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "upload",
+                "bucketName": "fancast-audio-productions",
+                "fileName": "={{ $json.s3_key }}",
+                "additionalFields": {
+                    "storageClass": "standard"
+                }
+            },
+            "id": "05b9afcc-d586-4197-8629-19e48368b393",
+            "name": "Upload Multi-Voice Audio to S3",
+            "type": "n8n-nodes-base.awsS3",
+            "typeVersion": 1,
+            "position": [
+                2240,
+                0
+            ],
+            "credentials": {
+                "aws": {
+                    "id": "mAxNNjVgwaRHplQE",
+                    "name": "AWS account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "jsCode": "// Calculate Progress\nconst allItems = $input.all();\nconst productionId = $('Validate & Process Input').first().json.production_id;\nconst totalLines = $('Validate & Process Input').first().json.total_lines;\n\nreturn {\n  json: {\n    production_id: productionId,\n    processed_lines: allItems.length,\n    progress: Math.round((allItems.length / totalLines) * 85),\n    updated_at: new Date().toISOString()\n  }\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                2464,
+                0
+            ],
+            "id": "ce2d8dab-60dd-416d-9280-3645604f32e9",
+            "name": "Calculate Progress"
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "tableId": "audio_productions",
+                "filterType": "string",
+                "filterString": "=id=eq.{{ $json.production_id }}",
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "processed_lines",
+                            "fieldValue": "={{ $json.processed_lines }}"
+                        },
+                        {
+                            "fieldId": "progress",
+                            "fieldValue": "={{ $json.progress }}"
+                        },
+                        {
+                            "fieldId": "updated_at",
+                            "fieldValue": "={{ $json.updated_at }}"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                2672,
+                0
+            ],
+            "id": "662ed51c-bd41-4a07-8a8a-8bde08859109",
+            "name": "Update Progress",
+            "credentials": {
+                "supabaseApi": {
+                    "id": "D8ivuhUEOHEw1Jwz",
+                    "name": "Supabase account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "tableId": "audio_productions",
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id",
+                            "condition": "eq",
+                            "keyValue": "={{ $('Validate & Process Input').first().json.production_id }}"
+                        }
+                    ]
+                },
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "status",
+                            "fieldValue": "processing"
+                        },
+                        {
+                            "fieldId": "progress",
+                            "fieldValue": "={{ $('Calculate Progress').first().json.progress }}"
+                        },
+                        {
+                            "fieldId": "updated_at",
+                            "fieldValue": "={{ new Date().toISOString() }}"
+                        },
+                        {
+                            "fieldId": "total_lines",
+                            "fieldValue": "={{ $('Validate & Process Input').first().json.total_lines }}"
+                        }
+                    ]
+                }
+            },
+            "id": "fe8fc9fc-b14d-4282-b83c-6c96906a5a2f",
+            "name": "Update Production Record",
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                2896,
+                0
+            ],
+            "credentials": {
+                "supabaseApi": {
+                    "id": "D8ivuhUEOHEw1Jwz",
+                    "name": "Supabase account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "function": "=dream-station-concatenationv2",
+                "payload": "={{ JSON.stringify($json) }}"
+            },
+            "id": "28278d4c-002a-43e6-a4e8-15ff5c6d5961",
+            "name": "Trigger Audio Concatenation (HTTP)",
+            "type": "n8n-nodes-base.awsLambda",
+            "typeVersion": 1,
+            "position": [
+                3120,
+                0
+            ],
+            "credentials": {
+                "aws": {
+                    "id": "mAxNNjVgwaRHplQE",
+                    "name": "AWS account"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "functionCode": "// Final Response with Lambda concatenation result\n// awsLambda node wraps Lambda return under $json.Payload\nconst lambdaRaw = $('Trigger Audio Concatenation (HTTP)').first().json;\nconst originalData = $('Validate & Process Input').first().json;\nconst lambdaPayload = $('Prepare Lambda Payload').first().json;\n\n// Handle awsLambda node response - Payload may be object or JSON string\nlet lambdaResult = lambdaRaw;\nif (lambdaRaw.Payload !== undefined) {\n  lambdaResult = typeof lambdaRaw.Payload === 'string'\n    ? JSON.parse(lambdaRaw.Payload)\n    : lambdaRaw.Payload;\n}\n\nconsole.log(\"Raw lambda node output:\", JSON.stringify(lambdaRaw));\nconsole.log(\"Parsed lambda result:\", JSON.stringify(lambdaResult));\n\nif (lambdaResult.success === false || lambdaResult.errorMessage) {\n  console.error(\"❌ Lambda concatenation failed:\", lambdaResult.error || lambdaResult.errorMessage);\n  return { json: {\n    success: false,\n    production: {\n      production_id: originalData.production_id,\n      status: 'concatenation_failed',\n      error_message: lambdaResult.error || lambdaResult.errorMessage || 'Audio concatenation failed'\n    }\n  }};\n}\n\n// Use finalAudioUrl from Lambda, or construct from known outputKey, or build from parts\nconst finalAudioUrl = lambdaResult.finalAudioUrl\n  || (lambdaResult.outputKey ? `https://fancast-audio-productions.s3.eu-west-1.amazonaws.com/${lambdaResult.outputKey}` : null)\n  || (lambdaPayload.outputKey ? `https://fancast-audio-productions.s3.eu-west-1.amazonaws.com/${lambdaPayload.outputKey}` : null)\n  || '';\n\nconsole.log(\"Final audio URL:\", finalAudioUrl);\n\nreturn { json: {\n  success: true,\n  production: {\n    production_id: originalData.production_id,\n    status: 'completed',\n    audio_url: finalAudioUrl,\n    file_size_kb: lambdaResult.fileSizeKB,\n    processing_time_ms: lambdaResult.processingTimeMs,\n    total_lines: originalData.total_lines\n  }\n}};"
+            },
+            "id": "7a6ed94b-9e03-4a54-9479-4b28c197987f",
+            "name": "Generate Final Response",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                3344,
+                0
+            ]
+        },
+        {
+            "parameters": {
+                "operation": "update",
+                "tableId": "audio_productions",
+                "filters": {
+                    "conditions": [
+                        {
+                            "keyName": "id",
+                            "condition": "eq",
+                            "keyValue": "={{ $('Validate & Process Input').first().json.production_id }}"
+                        }
+                    ]
+                },
+                "fieldsUi": {
+                    "fieldValues": [
+                        {
+                            "fieldId": "status",
+                            "fieldValue": "completed"
+                        },
+                        {
+                            "fieldId": "completed_at",
+                            "fieldValue": "={{ new Date().toISOString() }}"
+                        },
+                        {
+                            "fieldId": "audio_url",
+                            "fieldValue": "={{ $('Prepare Lambda Payload').first().json.outputKey ? 'https://fancast-audio-productions.s3.eu-west-1.amazonaws.com/' + $('Prepare Lambda Payload').first().json.outputKey : ($json.production && $json.production.audio_url ? $json.production.audio_url : '') }}"
+                        },
+                        {
+                            "fieldId": "progress",
+                            "fieldValue": "100"
+                        }
+                    ]
+                }
+            },
+            "type": "n8n-nodes-base.supabase",
+            "typeVersion": 1,
+            "position": [
+                3568,
+                0
+            ],
+            "id": "0a885081-eadc-48eb-ade7-3c020164cb12",
+            "name": "Supabase Audio Production",
+            "credentials": {
+                "supabaseApi": {
+                    "id": "D8ivuhUEOHEw1Jwz",
+                    "name": "Supabase account 2"
+                }
+            }
+        },
+        {
+            "parameters": {
+                "functionCode": "// Error Handler - return error response with debugging\nconst error = $input.first().json;\nreturn { json: { success: false, error: error.message } };"
+            },
+            "id": "34d21d31-d4e3-44e4-8b6b-c36986648dc2",
+            "name": "Error Handler",
+            "type": "n8n-nodes-base.function",
+            "typeVersion": 1,
+            "position": [
+                0,
+                224
+            ],
+            "alwaysOutputData": true
+        },
+        {
+            "parameters": {
+                "jsCode": "// Build Lambda payload from Split Script Lines + Validate & Process Input\n// We rebuild audioFiles here because the audioFileList from Process Multi-Voice Audio\n// may not survive the S3 upload -> Calculate Progress -> Update Progress chain\nconst inputData = $(\"Validate & Process Input\").first().json;\nconst splitLines = $(\"Split Script Lines\").all();\n\nconst userId = inputData.user_id;\nconst productionId = inputData.production_id;\nconst timestamp = Date.now();\n\n// Rebuild the audioFiles array from Split Script Lines output\nconst audioFiles = splitLines.map((item, index) => ({\n  s3Key: item.json.s3_key,\n  speaker: item.json.speaker,\n  lineIndex: index,\n  pauseAfter: item.json.pause_after || 0.5\n}));\n\nconst finalOutputKey = `productions/${userId}/${productionId}/final/full_audio_${timestamp}.wav`;\n\nconsole.log(\"audioFiles count:\", audioFiles.length);\nconsole.log(\"finalOutputKey:\", finalOutputKey);\nconsole.log(\"First file:\", JSON.stringify(audioFiles[0]));\n\nreturn {\n  json: {\n    bucketName: \"fancast-audio-productions\",\n    audioFiles: audioFiles,\n    outputKey: finalOutputKey,\n    productionId: productionId,\n    userId: userId\n  }\n};"
+            },
+            "type": "n8n-nodes-base.code",
+            "typeVersion": 2,
+            "position": [
+                3020,
+                0
+            ],
+            "id": "prep-lambda-payload-001",
+            "name": "Prepare Lambda Payload"
+        }
+    ],
+    "pinData": {},
+    "connections": {
+        "Webhook - Full Script TTS": {
+            "main": [
+                [
+                    {
+                        "node": "Validate & Process Input",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Validate & Process Input": {
+            "main": [
+                [
+                    {
+                        "node": "Create Production Record",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Create Production Record": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Immediate Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Immediate Response": {
+            "main": [
+                [
+                    {
+                        "node": "Respond to Webhook",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Respond to Webhook": {
+            "main": [
+                [
+                    {
+                        "node": "Fetch Voice Assignments",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Fetch Voice Assignments": {
+            "main": [
+                [
+                    {
+                        "node": "Format Voice Assignments",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Format Voice Assignments": {
+            "main": [
+                [
+                    {
+                        "node": "Split Script Lines",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Split Script Lines": {
+            "main": [
+                [
+                    {
+                        "node": "Cartesia TTS Generation",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Cartesia TTS Generation": {
+            "main": [
+                [
+                    {
+                        "node": "Process Multi-Voice Audio",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Process Multi-Voice Audio": {
+            "main": [
+                [
+                    {
+                        "node": "Upload Multi-Voice Audio to S3",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Upload Multi-Voice Audio to S3": {
+            "main": [
+                [
+                    {
+                        "node": "Calculate Progress",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Calculate Progress": {
+            "main": [
+                [
+                    {
+                        "node": "Update Progress",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Progress": {
+            "main": [
+                [
+                    {
+                        "node": "Update Production Record",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Update Production Record": {
+            "main": [
+                [
+                    {
+                        "node": "Prepare Lambda Payload",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Trigger Audio Concatenation (HTTP)": {
+            "main": [
+                [
+                    {
+                        "node": "Generate Final Response",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Generate Final Response": {
+            "main": [
+                [
+                    {
+                        "node": "Supabase Audio Production",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        },
+        "Prepare Lambda Payload": {
+            "main": [
+                [
+                    {
+                        "node": "Trigger Audio Concatenation (HTTP)",
+                        "type": "main",
+                        "index": 0
+                    }
+                ]
+            ]
+        }
+    },
+    "active": true,
+    "settings": {
+        "executionOrder": "v1"
+    }
+}

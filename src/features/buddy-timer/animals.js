@@ -77,8 +77,8 @@ export const ANIMALS = [
     image: 'https://files.manuscdn.com/user_upload_by_module/session_file/109885302/MyPdJhEAYrpbTOYj.png',
   },
   {
-    id: 'jojo',
-    name: 'Jojo',
+    id: 'masha',
+    name: 'Masha',
     type: 'Monkey',
     trait: 'Silly & Fun',
     emoji: '🐵',

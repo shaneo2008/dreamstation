@@ -31,6 +31,7 @@ export const saveScriptToDatabase = async (scriptData, userId) => {
       status: 'draft',
       total_lines: scriptData.lines?.length || 0,
       estimated_duration: Math.ceil((scriptData.lines?.length || 0) * 0.5), // rough estimate
+      metadata: scriptData.metadata || null,
       updated_at: new Date().toISOString()
     };
     
@@ -243,6 +244,7 @@ export const loadScript = async (scriptId, userId) => {
       audioDuration: script.audio_productions?.[0]?.audio_duration || null,
       audioStatus: script.audio_productions?.[0]?.status || null,
       metadata: {
+        ...(script.metadata || {}),
         totalLines: transformedLines.length,
         charactersCount: [...new Set(transformedLines.map(line => line.speaker))].filter(Boolean).length,
         dialogueCount: transformedLines.filter(line => line.type === 'dialogue').length,

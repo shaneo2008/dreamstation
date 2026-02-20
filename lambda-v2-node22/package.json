@@ -1,0 +1,27 @@
+{
+    "name": "lambda-audio-concatenation-v2",
+    "version": "2.0.0",
+    "description": "AWS Lambda function for concatenating audio files using FFmpeg (Node 22 with audio improvements)",
+    "main": "index.js",
+    "type": "commonjs",
+    "scripts": {
+        "test": "echo \"Error: no test specified\" && exit 1"
+    },
+    "keywords": [
+        "aws",
+        "lambda",
+        "ffmpeg",
+        "audio",
+        "concatenation",
+        "normalization",
+        "dreamstation"
+    ],
+    "author": "Shane",
+    "license": "ISC",
+    "dependencies": {
+        "@aws-sdk/client-s3": "^3.0.0"
+    },
+    "engines": {
+        "node": ">=22.0.0"
+    }
+}

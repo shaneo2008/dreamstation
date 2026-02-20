@@ -167,7 +167,10 @@ const AuthenticatedApp = () => {
                     text: line.text || '',
                     annotations: line.emotion ? [line.emotion.toLowerCase()] : []
                   })),
-                  metadata: result.data.metadata || {}
+                  metadata: {
+                    ...(result.data.script.metadata || result.data.metadata || {}),
+                    characters: result.data.characters || result.data.script.metadata?.characters || []
+                  }
                 };
 
                 // AUTO-SAVE: Automatically save the AI-generated script to localStorage

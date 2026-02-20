@@ -15,7 +15,7 @@ const pollScriptStatus = async (scriptId, startTime = Date.now()) => {
 
   const { data, error } = await supabase
     .from('scripts')
-    .select('*')
+    .select('*, lines:script_lines(*)')
     .eq('id', scriptId)
     .single();
 
@@ -26,15 +26,27 @@ const pollScriptStatus = async (scriptId, startTime = Date.now()) => {
 
   console.log(`🔄 Polling script ${scriptId}: status=${data.status || 'unknown'}`);
 
-  // Check if completed (script has lines)
-  if (data.lines && data.lines.length > 0) {
+  // Check if completed (status is 'ready' AND script has lines)
+  // We check for 'ready' status to ensure the title has been updated by n8n
+  if (data.status === 'ready' && data.lines && data.lines.length > 0) {
     console.log('✅ Script generation completed!', data);
+
+    // Map Supabase column names to the format the UI expects
+    const mappedLines = data.lines.map((line) => ({
+      ...line,
+      type: line.line_type || line.type || 'dialogue',
+      speaker: line.speaker_name || line.speaker || 'Narrator',
+      text: line.text_content || line.text || '',
+      emotion: line.emotion_type || line.emotion || 'neutral',
+      pause_after: line.pause_after ?? (line.line_type === 'narration' ? 1.0 : 0.5),
+    }));
+
     return {
       success: true,
       script_id: data.id,
       script: {
         title: data.title,
-        lines: data.lines,
+        lines: mappedLines,
         metadata: data.metadata || {}
       }
     };
@@ -120,7 +132,8 @@ export const generateAIScript = async (payload) => {
       return {
         success: true,
         data: {
-          script: finalResult.script
+          script: finalResult.script,
+          characters: finalResult.script?.metadata?.characters || []
         }
       };
     }
