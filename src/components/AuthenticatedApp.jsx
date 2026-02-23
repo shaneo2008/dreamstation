@@ -4,7 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import ScriptEditorScreen from './ScriptEditorScreen';
 import OptimizedCreateScreen from './OptimizedCreateScreen';
 import BuddyTimerApp from '../features/buddy-timer/BuddyTimerApp';
-import { saveScriptToDatabase, loadSavedScripts, loadScript, deleteScript } from '../services/scriptSaveService';
+import { loadSavedScripts, loadScript, deleteScript } from '../services/scriptSaveService';
 import { generateAIScript } from '../services/aiScriptGenerationService';
 import { autoAssignVoices } from '../services/cartesiaVoiceService';
 
@@ -159,6 +159,7 @@ const AuthenticatedApp = () => {
 
                 // Transform AI-generated script to match script editor format
                 const transformedScript = {
+                  id: result.script_id,  // Use existing n8n-created record ID to avoid duplicate
                   title: result.data.script.title,
                   lines: result.data.script.lines.map((line, index) => ({
                     id: index + 1,
@@ -173,45 +174,26 @@ const AuthenticatedApp = () => {
                   }
                 };
 
-                // AUTO-SAVE: Automatically save the AI-generated script to localStorage
-                console.log('Auto-saving AI-generated script to localStorage...');
-                let saveResult;
-                try {
-                  saveResult = await saveScriptToDatabase(transformedScript, user?.id);
-                  if (saveResult.success) {
-                    console.log('✅ AI-generated script auto-saved successfully!');
-                    // Trigger library refresh so the script appears immediately
-                    setShouldRefreshLibrary(true);
+                // n8n already saved the script to Supabase - just refresh the library
+                // and auto-assign voices using the existing script_id
+                console.log('✅ AI script already saved by n8n with ID:', result.script_id);
+                setShouldRefreshLibrary(true);
 
-                    // AUTO-ASSIGN VOICES: Automatically assign voices if characters were provided by Gemini
-                    if (result.data.characters && result.data.characters.length > 0) {
-                      console.log('🎭 Auto-assigning voices for', result.data.characters.length, 'characters');
-
-                      try {
-                        // Call auto-assign with full character objects (includes gender from Gemini)
-                        await autoAssignVoices(
-                          saveResult.script_id,
-                          user?.id,
-                          result.data.characters  // Pass full character objects with gender metadata
-                        );
-
-                        console.log('✅ Voice auto-assignment completed successfully');
-
-                      } catch (autoAssignError) {
-                        console.error('❌ Voice auto-assignment failed:', autoAssignError);
-                        console.error('Error details:', autoAssignError.message);
-                        // Don't block the flow - user can manually assign voices later
-                        // They'll just see the script without voice assignments
-                      }
-                    } else {
-                      console.log('ℹ️ No characters data from Gemini, skipping auto-assign');
-                    }
-
-                  } else {
-                    console.error('❌ Failed to auto-save AI-generated script:', saveResult.error);
+                // AUTO-ASSIGN VOICES: Automatically assign voices if characters were provided by Gemini
+                if (result.script_id && result.data.characters && result.data.characters.length > 0) {
+                  console.log('🎭 Auto-assigning voices for', result.data.characters.length, 'characters');
+                  try {
+                    await autoAssignVoices(
+                      result.script_id,
+                      user?.id,
+                      result.data.characters
+                    );
+                    console.log('✅ Voice auto-assignment completed successfully');
+                  } catch (autoAssignError) {
+                    console.error('❌ Voice auto-assignment failed:', autoAssignError.message);
                   }
-                } catch (saveError) {
-                  console.error('❌ Error auto-saving AI-generated script:', saveError);
+                } else {
+                  console.log('ℹ️ No characters data from Gemini, skipping auto-assign');
                 }
 
                 // Store the script data in component state

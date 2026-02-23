@@ -3,12 +3,10 @@ import { Volume2, Wand2, Play, User, Mic, Check, Pause, ChevronRight, ArrowLeft 
 import {
   getVoiceById,
   getVoicesByFilter,
-  previewVoiceOnLine,
   getVoiceAssignments,
   saveVoiceAssignments,
   autoAssignVoices
 } from '../services/cartesiaVoiceService';
-import { saveScriptToDatabase } from '../services/scriptSaveService';
 
 const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsChange }) => {
   const [voiceAssignments, setVoiceAssignments] = useState({});
@@ -64,35 +62,9 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
       const characters = getUniqueCharacters();
       console.log('🎭 Sending characters for auto-assign:', characters);
 
-      // Auto-save script if it doesn't have an ID (same logic as ScriptEditorScreen)
-      let scriptId = script?.id;
+      const scriptId = script?.id;
       if (!scriptId) {
-        console.log('💾 Script not saved yet, auto-saving before voice assignment...');
-
-        const scriptData = {
-          id: crypto.randomUUID(),
-          title: script?.title || 'Untitled Script',
-          lines: scriptLines,
-          metadata: {
-            ...script?.metadata,
-            charactersCount: [...new Set(scriptLines.map(line => line.speaker))].length,
-            dialogueCount: scriptLines.filter(line => line.type === 'dialogue').length,
-            narrationCount: scriptLines.filter(line => line.type === 'narration').length,
-            totalLines: scriptLines.length,
-            generatedAt: script?.metadata?.generatedAt || new Date().toISOString()
-          }
-        };
-
-        const result = await saveScriptToDatabase(scriptData, user.id);
-
-        if (result.success) {
-          console.log('✅ Script auto-saved with ID:', scriptData.id);
-          scriptId = scriptData.id;
-          // Update the script object for future use
-          script.id = scriptData.id;
-        } else {
-          throw new Error(result.error || 'Failed to auto-save script before voice assignment');
-        }
+        throw new Error('Script must be saved before assigning voices');
       }
 
       console.log('🔍 Using script ID for auto-assign:', scriptId);
@@ -102,11 +74,9 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
       // Parse the n8n webhook response format
       const assignments = {};
 
-      // Handle the actual response format with "object Object" key
-      const responseData = response['object Object'];
-      if (responseData && responseData.success && responseData.data && responseData.data.assignments) {
-        // Convert assignments array to character -> voice mapping
-        responseData.data.assignments.forEach(assignment => {
+      // autoAssignVoices already unwraps the response - handle clean format directly
+      if (response && response.success && response.data && response.data.assignments) {
+        response.data.assignments.forEach(assignment => {
           assignments[assignment.character_name] = assignment.cartesia_voice_id;
         });
         console.log('✅ Converted assignments:', assignments);
@@ -114,12 +84,12 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
 
       // Fallback: try array format
       else if (Array.isArray(response) && response.length > 0) {
-        const result = response[0];
-        if (result.success && result.data && result.data.assignments) {
-          result.data.assignments.forEach(assignment => {
+        const first = response[0];
+        if (first.success && first.data && first.data.assignments) {
+          first.data.assignments.forEach(assignment => {
             assignments[assignment.character_name] = assignment.cartesia_voice_id;
           });
-          console.log('✅ Converted assignments (fallback):', assignments);
+          console.log('✅ Converted assignments (array fallback):', assignments);
         }
       }
 
@@ -148,20 +118,35 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
     await saveVoiceAssignmentsToDb(newAssignments);
   };
 
-  // Handle voice preview
-  const handleVoicePreview = async (voiceId, characterName) => {
-    try {
-      setPlayingVoice(voiceId);
-      const sampleLine = scriptLines.find(line => line.speaker === characterName);
-      if (sampleLine) {
-        await previewVoiceOnLine(voiceId, sampleLine.text, characterName, user.id, script.id);
-      }
-      // Simulate audio duration
-      setTimeout(() => setPlayingVoice(null), 2000);
-    } catch (error) {
-      console.error('Error previewing voice:', error);
-      setPlayingVoice(null);
+  // Handle voice preview — plays pre-recorded S3 sample, no API cost
+  const handleVoicePreview = (voiceId) => {
+    const voice = getVoiceById(voiceId);
+    if (!voice?.sample_url) {
+      console.warn('No sample URL for voice:', voiceId);
+      return;
     }
+    // Stop any currently playing audio
+    if (window._previewAudio) {
+      window._previewAudio.pause();
+      window._previewAudio = null;
+    }
+    if (playingVoice === voiceId) {
+      setPlayingVoice(null);
+      return;
+    }
+    const audio = new Audio(voice.sample_url);
+    window._previewAudio = audio;
+    setPlayingVoice(voiceId);
+    audio.play().catch(err => console.error('Preview playback error:', err));
+    audio.onended = () => {
+      setPlayingVoice(null);
+      window._previewAudio = null;
+    };
+    audio.onerror = () => {
+      console.error('Failed to load preview for:', voice.name);
+      setPlayingVoice(null);
+      window._previewAudio = null;
+    };
   };
 
   // Handle Save & Continue
@@ -332,15 +317,27 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
       </div>
 
       {/* Voice List — larger touch targets on mobile */}
+      {/* Legend */}
+      <div className="flex items-center gap-3 mb-2 text-xs text-sleep-400 font-body">
+        <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-sleep-300/40"></span> Used by another character</span>
+      </div>
+
       <div className="space-y-2 max-h-[60vh] md:max-h-96 overflow-y-auto -mx-1 px-1">
         {getVoicesByFilter(voiceFilter).map(voice => {
           const isCurrentAssignment = selectedCharacter && voiceAssignments[selectedCharacter] === voice.id;
+          // Check if this voice is assigned to a different character
+          const assignedToCharacter = Object.entries(voiceAssignments).find(
+            ([charName, vId]) => vId === voice.id && charName !== selectedCharacter
+          )?.[0];
+          const isAssignedElsewhere = !!assignedToCharacter;
 
           return (
             <div
               key={voice.id}
               className={`p-4 rounded-2xl transition-all border-2 ${isCurrentAssignment
                   ? 'bg-success/10 border-success/30'
+                  : isAssignedElsewhere
+                  ? 'bg-cream-100/30 border-cream-200/30 opacity-40'
                   : 'bg-white/60 border-cream-300/30 hover:border-cream-400'
                 }`}
             >
@@ -351,6 +348,9 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
                     <div className="font-display font-semibold text-base text-sleep-900">{voice.name}</div>
                     {isCurrentAssignment && (
                       <span className="text-[10px] bg-success/20 text-success px-2 py-0.5 rounded-full font-display font-bold">ASSIGNED</span>
+                    )}
+                    {isAssignedElsewhere && (
+                      <span className="text-[10px] bg-sleep-200/60 text-sleep-400 px-2 py-0.5 rounded-full font-display font-bold">USED BY {assignedToCharacter.toUpperCase()}</span>
                     )}
                   </div>
                   <div className="text-xs text-sleep-400 font-body mt-0.5 line-clamp-1">{voice.description}</div>
@@ -367,7 +367,7 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
                 {/* Action buttons — full width on mobile */}
                 <div className="flex gap-2 sm:shrink-0">
                   <button
-                    onClick={() => handleVoicePreview(voice.id, selectedCharacter || (typeof characters[0] === 'string' ? characters[0] : characters[0]?.name))}
+                    onClick={() => handleVoicePreview(voice.id)}
                     disabled={playingVoice === voice.id}
                     className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-3 sm:py-2 rounded-xl font-display font-semibold text-xs transition-all active:scale-[0.97] ${playingVoice === voice.id
                         ? 'bg-dream-glow/20 text-dream-glow'
@@ -382,14 +382,19 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
                   </button>
                   {selectedCharacter && (
                     <button
-                      onClick={() => assignVoiceToCharacter(selectedCharacter, voice.id)}
+                      onClick={() => !isAssignedElsewhere && assignVoiceToCharacter(selectedCharacter, voice.id)}
+                      disabled={isAssignedElsewhere}
                       className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-3 sm:py-2 rounded-xl text-xs font-display font-bold transition-all active:scale-[0.97] ${isCurrentAssignment
                           ? 'bg-success text-white'
+                          : isAssignedElsewhere
+                          ? 'bg-sleep-200/50 text-sleep-400 cursor-not-allowed'
                           : 'bg-dream-glow text-white hover:bg-dream-aurora shadow-glow-sm'
                         }`}
                     >
                       {isCurrentAssignment ? (
                         <><Check size={14} /> Assigned</>
+                      ) : isAssignedElsewhere ? (
+                        <>In Use</>
                       ) : (
                         <>Assign ✨</>
                       )}
@@ -425,7 +430,7 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
               </span>
             </div>
             <button
-              onClick={() => handleVoicePreview(voiceAssignments[selectedCharacter], selectedCharacter)}
+              onClick={() => handleVoicePreview(voiceAssignments[selectedCharacter])}
               disabled={playingVoice === voiceAssignments[selectedCharacter]}
               className="w-full sm:w-auto px-4 py-3 sm:py-2 bg-success text-white rounded-xl text-xs font-display font-bold hover:bg-success/80 transition-all disabled:opacity-50 active:scale-[0.97] flex items-center justify-center gap-1.5"
             >

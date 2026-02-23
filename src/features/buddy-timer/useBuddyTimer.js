@@ -42,8 +42,9 @@ const useBuddyTimer = create((set, get) => ({
     const interval = setInterval(() => {
       const { timeLeft } = get();
       if (timeLeft <= 1) {
-        // Timer done — auto-complete the task
-        get().completeCurrentTask();
+        // Timer done — stop and wait for user to click Done
+        clearInterval(interval);
+        set({ timeLeft: 0, timerInterval: null });
       } else {
         set({ timeLeft: timeLeft - 1 });
       }
