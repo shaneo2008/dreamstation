@@ -4,7 +4,6 @@
  * Mobile-optimised: bigger animal, larger tap target
  */
 
-import { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Heart } from 'lucide-react';
 import useBuddyTimer from './useBuddyTimer';
@@ -20,14 +19,6 @@ const hearts = Array.from({ length: 8 }, (_, i) => ({
 export default function CelebrationScreen() {
   const { selectedAnimal, currentTaskIndex, completedTasks, nextTask } = useBuddyTimer();
   const justCompleted = TASKS[currentTaskIndex];
-
-  // Auto-advance after 2.5 seconds
-  useEffect(() => {
-    const timeout = setTimeout(() => {
-      nextTask();
-    }, 2500);
-    return () => clearTimeout(timeout);
-  }, [nextTask]);
 
   if (!selectedAnimal || !justCompleted) return null;
 
@@ -117,15 +108,15 @@ export default function CelebrationScreen() {
         </div>
       </motion.div>
 
-      {/* Tap to continue — bigger touch target on mobile */}
+      {/* Next task button — must be tapped to continue */}
       <motion.button
         onClick={nextTask}
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 1.5 }}
-        className="mt-8 px-6 py-3 sm:py-2 text-sleep-400 text-sm sm:text-xs font-display font-semibold active:scale-[0.97] rounded-xl"
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ delay: 1.2, type: 'spring', stiffness: 200 }}
+        className="mt-8 px-8 py-4 sm:py-3 bg-dream-glow text-white rounded-2xl font-display font-bold text-base shadow-glow-sm hover:bg-dream-aurora active:scale-[0.97] transition-all"
       >
-        Tap to continue →
+        Next Task →
       </motion.button>
     </div>
   );

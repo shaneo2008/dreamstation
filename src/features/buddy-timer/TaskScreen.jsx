@@ -157,10 +157,11 @@ export default function TaskScreen() {
         </button>
         <button
           onClick={completeCurrentTask}
-          className="flex-[2] py-4 sm:py-3 rounded-2xl font-display font-bold text-sm
+          className={`flex-[2] py-4 sm:py-3 rounded-2xl font-display font-bold text-sm
             bg-dream-glow text-white shadow-glow-sm
             hover:bg-dream-aurora active:scale-[0.98] transition-all
-            flex items-center justify-center gap-1.5"
+            flex items-center justify-center gap-1.5
+            ${timeLeft === 0 ? 'animate-pulse' : ''}`}
         >
           <CheckCircle className="w-4 h-4 shrink-0" />
           <span className="truncate">Done! Feed {selectedAnimal.name}!</span>

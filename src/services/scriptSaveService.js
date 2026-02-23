@@ -13,12 +13,43 @@ const generateUUID = () => {
   });
 };
 
+// Deduplication cache to prevent React Strict Mode double-saves
+const saveCache = new Map();
+const CACHE_TTL = 2000; // 2 seconds
+
+function getCacheKey(scriptData, userId) {
+  const title = scriptData.title || 'Untitled Script';
+  const linesCount = scriptData.lines?.length || 0;
+  const firstLine = scriptData.lines?.[0]?.text || '';
+  return `${userId}-${title}-${linesCount}-${firstLine.slice(0, 50)}`;
+}
+
 export const saveScriptToDatabase = async (scriptData, userId) => {
   try {
     console.log('💾 Saving script to Supabase:', { scriptData, userId });
     
     if (!userId) {
       throw new Error('User ID is required to save script');
+    }
+    
+    // Check cache to prevent React Strict Mode double-saves
+    const cacheKey = getCacheKey(scriptData, userId);
+    const now = Date.now();
+    const cached = saveCache.get(cacheKey);
+    
+    if (cached && (now - cached) < CACHE_TTL) {
+      console.log('⚠️ Duplicate save detected, skipping (React Strict Mode protection)');
+      return { success: false, reason: 'duplicate_save', cached: true };
+    }
+    
+    // Mark this save attempt in cache
+    saveCache.set(cacheKey, now);
+    
+    // Clean up old cache entries
+    for (const [key, timestamp] of saveCache.entries()) {
+      if (now - timestamp > CACHE_TTL) {
+        saveCache.delete(key);
+      }
     }
     
     const scriptId = scriptData.id || generateUUID();

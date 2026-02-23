@@ -131,6 +131,7 @@ export const generateAIScript = async (payload) => {
       console.log('✅ AI Script generation completed:', finalResult);
       return {
         success: true,
+        script_id: finalResult.script_id,
         data: {
           script: finalResult.script,
           characters: finalResult.script?.metadata?.characters || []

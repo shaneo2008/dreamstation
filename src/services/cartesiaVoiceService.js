@@ -1,5 +1,7 @@
 // Cartesia Voice Service - Sonic 3.0 Voice Library
 
+const S3_PREVIEW_BASE = 'https://fancast-tts-previews.s3.eu-west-1.amazonaws.com/Cartesia%20Previews';
+
 // SONIC 3.0 VOICE LIBRARY - All IDs verified working
 export const CARTESIA_VOICE_LIBRARY = {
   // ── NARRATORS ──────────────────────────────────────────
@@ -10,7 +12,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'narrator',
     description: 'Approachable narrator voice',
     tags: ['narrator', 'storyteller', 'engaging'],
-    preview_url: 'https://play.cartesia.ai/voices/c961b81c-a935-4c17-bfb3-ba2239de8c2f'
+    preview_url: 'https://play.cartesia.ai/voices/c961b81c-a935-4c17-bfb3-ba2239de8c2f',
+    sample_url: `${S3_PREVIEW_BASE}/Kyle.mp3`
   },
   'narrator_male_rupert': {
     id: '0ad65e7f-006c-47cf-bd31-52279d487913',
@@ -19,7 +22,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'narrator',
     description: 'Caring Dad - British',
     tags: ['narrator', 'british', 'warm', 'mature'],
-    preview_url: 'https://play.cartesia.ai/voices/0ad65e7f-006c-47cf-bd31-52279d487913'
+    preview_url: 'https://play.cartesia.ai/voices/0ad65e7f-006c-47cf-bd31-52279d487913',
+    sample_url: `${S3_PREVIEW_BASE}/Rupert.mp3`
   },
   'narrator_female_marian': {
     id: '26403c37-80c1-4a1a-8692-540551ca2ae5',
@@ -28,7 +32,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'narrator',
     description: 'Poised narrator - calm authority',
     tags: ['narrator', 'storyteller', 'mature', 'calm'],
-    preview_url: 'https://play.cartesia.ai/voices/26403c37-80c1-4a1a-8692-540551ca2ae5'
+    preview_url: 'https://play.cartesia.ai/voices/26403c37-80c1-4a1a-8692-540551ca2ae5',
+    sample_url: `${S3_PREVIEW_BASE}/Marian.mp3`
   },
   'narrator_male_theo': {
     id: '79f8b5fb-2cc8-479a-80df-29f7a7cf1a3e',
@@ -37,7 +42,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'narrator',
     description: 'Modern narrator - steady and confident',
     tags: ['narrator', 'modern', 'confident'],
-    preview_url: 'https://play.cartesia.ai/voices/79f8b5fb-2cc8-479a-80df-29f7a7cf1a3e'
+    preview_url: 'https://play.cartesia.ai/voices/79f8b5fb-2cc8-479a-80df-29f7a7cf1a3e',
+    sample_url: `${S3_PREVIEW_BASE}/Theo.mp3`
   },
   'narrator_female_robyn': {
     id: '8985388c-1332-4ce7-8d55-789628aa3df4',
@@ -46,7 +52,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'narrator',
     description: 'Storycrafter - Australian, neutral and mature',
     tags: ['narrator', 'australian', 'mature', 'neutral'],
-    preview_url: 'https://play.cartesia.ai/voices/8985388c-1332-4ce7-8d55-789628aa3df4'
+    preview_url: 'https://play.cartesia.ai/voices/8985388c-1332-4ce7-8d55-789628aa3df4',
+    sample_url: `${S3_PREVIEW_BASE}/Robyn.mp3`
   },
 
   // ── MALE CHARACTERS ────────────────────────────────────
@@ -57,7 +64,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Friendly male voice - British',
     tags: ['character', 'british', 'expressive', 'friendly'],
-    preview_url: 'https://play.cartesia.ai/voices/1463a4e1-56a1-4b41-b257-728d56e93605'
+    preview_url: 'https://play.cartesia.ai/voices/1463a4e1-56a1-4b41-b257-728d56e93605',
+    sample_url: `${S3_PREVIEW_BASE}/Hugo.mp3`
   },
   'male_carson': {
     id: '86e30c1d-714b-4074-a1f2-1cb6b552fb49',
@@ -66,7 +74,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Curious Conversationalist - friendly young adult',
     tags: ['character', 'curious', 'friendly', 'young'],
-    preview_url: 'https://play.cartesia.ai/voices/86e30c1d-714b-4074-a1f2-1cb6b552fb49'
+    preview_url: 'https://play.cartesia.ai/voices/86e30c1d-714b-4074-a1f2-1cb6b552fb49',
+    sample_url: `${S3_PREVIEW_BASE}/Carson.mp3`
   },
   'male_henry': {
     id: '87286a8d-7ea7-4235-a41a-dd9fa6630feb',
@@ -75,7 +84,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Plainspoken Guy - relaxed, matter-of-fact',
     tags: ['character', 'casual', 'monotone', 'relaxed'],
-    preview_url: 'https://play.cartesia.ai/voices/87286a8d-7ea7-4235-a41a-dd9fa6630feb'
+    preview_url: 'https://play.cartesia.ai/voices/87286a8d-7ea7-4235-a41a-dd9fa6630feb',
+    sample_url: `${S3_PREVIEW_BASE}/Henry.mp3`
   },
   'male_blake': {
     id: 'a167e0f3-df7e-4d52-a9c3-f949145efdab',
@@ -84,7 +94,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Helpful Friend - energetic adult male',
     tags: ['character', 'energetic', 'friendly'],
-    preview_url: 'https://play.cartesia.ai/voices/a167e0f3-df7e-4d52-a9c3-f949145efdab'
+    preview_url: 'https://play.cartesia.ai/voices/a167e0f3-df7e-4d52-a9c3-f949145efdab',
+    sample_url: `${S3_PREVIEW_BASE}/Blake.mp3`
   },
   'male_oliver': {
     id: 'ee7ea9f8-c0c1-498c-9279-764d6b56d189',
@@ -93,7 +104,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Polite young adult - British',
     tags: ['character', 'british', 'polite', 'young'],
-    preview_url: 'https://play.cartesia.ai/voices/ee7ea9f8-c0c1-498c-9279-764d6b56d189'
+    preview_url: 'https://play.cartesia.ai/voices/ee7ea9f8-c0c1-498c-9279-764d6b56d189',
+    sample_url: `${S3_PREVIEW_BASE}/Oliver.mp3`
   },
   'male_jeremy': {
     id: '6cb8801d-259a-4bdc-978f-b45808d58cd3',
@@ -102,7 +114,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Energetic Young Male - high energy, engaging',
     tags: ['character', 'energetic', 'young', 'upbeat'],
-    preview_url: 'https://play.cartesia.ai/voices/6cb8801d-259a-4bdc-978f-b45808d58cd3'
+    preview_url: 'https://play.cartesia.ai/voices/6cb8801d-259a-4bdc-978f-b45808d58cd3',
+    sample_url: `${S3_PREVIEW_BASE}/Jeremy.mp3`
   },
 
   // ── YOUNG MALE CHARACTERS ──────────────────────────────
@@ -113,7 +126,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'youthful',
     description: 'Friendly Young Male - welcoming and engaging',
     tags: ['young', 'friendly', 'character'],
-    preview_url: 'https://play.cartesia.ai/voices/729651dc-c6c3-4ee5-97fa-350da1f88600'
+    preview_url: 'https://play.cartesia.ai/voices/729651dc-c6c3-4ee5-97fa-350da1f88600',
+    sample_url: `${S3_PREVIEW_BASE}/Jake.mp3`
   },
   'young_male_zeke': {
     id: 'e00d0e4c-a5c8-443f-a8a3-473eb9a62355',
@@ -122,7 +136,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'youthful',
     description: 'Friendly high-pitched Young Male - gaming and entertainment',
     tags: ['young', 'high-pitched', 'character', 'gaming'],
-    preview_url: 'https://play.cartesia.ai/voices/e00d0e4c-a5c8-443f-a8a3-473eb9a62355'
+    preview_url: 'https://play.cartesia.ai/voices/e00d0e4c-a5c8-443f-a8a3-473eb9a62355',
+    sample_url: `${S3_PREVIEW_BASE}/Zeke.mp3`
   },
 
   // ── FEMALE CHARACTERS ──────────────────────────────────
@@ -133,7 +148,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'warm',
     description: 'Kind Companion - warm and conversational',
     tags: ['character', 'warm', 'friendly', 'protagonist'],
-    preview_url: 'https://play.cartesia.ai/voices/6ccbfb76-1fc6-48f7-b71d-91ac6298247b'
+    preview_url: 'https://play.cartesia.ai/voices/6ccbfb76-1fc6-48f7-b71d-91ac6298247b',
+    sample_url: `${S3_PREVIEW_BASE}/Tessa.mp3`
   },
   'female_kira': {
     id: '57dcab65-68ac-45a6-8480-6c4c52ec1cd1',
@@ -142,7 +158,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'warm',
     description: 'Trusted Confidant - emotive young adult',
     tags: ['character', 'emotive', 'warm', 'protagonist'],
-    preview_url: 'https://play.cartesia.ai/voices/57dcab65-68ac-45a6-8480-6c4c52ec1cd1'
+    preview_url: 'https://play.cartesia.ai/voices/57dcab65-68ac-45a6-8480-6c4c52ec1cd1',
+    sample_url: `${S3_PREVIEW_BASE}/Kira.mp3`
   },
   'female_charlotte': {
     id: '71a7ad14-091c-4e8e-a314-022ece01c121',
@@ -151,7 +168,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Heiress - elegant young adult, British',
     tags: ['character', 'british', 'elegant', 'protagonist'],
-    preview_url: 'https://play.cartesia.ai/voices/71a7ad14-091c-4e8e-a314-022ece01c121'
+    preview_url: 'https://play.cartesia.ai/voices/71a7ad14-091c-4e8e-a314-022ece01c121',
+    sample_url: `${S3_PREVIEW_BASE}/Charlotte.mp3`
   },
   'female_olivia': {
     id: 'f31cc6a7-c1e8-4764-980c-60a361443dd1',
@@ -160,7 +178,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'warm',
     description: 'Sunny Woman - friendly, happy adult, Australian',
     tags: ['character', 'australian', 'friendly', 'warm'],
-    preview_url: 'https://play.cartesia.ai/voices/f31cc6a7-c1e8-4764-980c-60a361443dd1'
+    preview_url: 'https://play.cartesia.ai/voices/f31cc6a7-c1e8-4764-980c-60a361443dd1',
+    sample_url: `${S3_PREVIEW_BASE}/Olivia.mp3`
   },
   'female_madison': {
     id: 'a5def41e-2e73-433f-92f7-5f1d99fef05d',
@@ -169,7 +188,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Best Friend - enthusiastic young adult',
     tags: ['character', 'enthusiastic', 'young', 'emotive'],
-    preview_url: 'https://play.cartesia.ai/voices/a5def41e-2e73-433f-92f7-5f1d99fef05d'
+    preview_url: 'https://play.cartesia.ai/voices/a5def41e-2e73-433f-92f7-5f1d99fef05d',
+    sample_url: `${S3_PREVIEW_BASE}/Madison.mp3`
   },
   'female_katie': {
     id: 'f786b574-daa5-4673-aa0c-cbe3e8534c02',
@@ -178,7 +198,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Friendly Fixer - enunciating young adult',
     tags: ['character', 'clear', 'friendly', 'young'],
-    preview_url: 'https://play.cartesia.ai/voices/f786b574-daa5-4673-aa0c-cbe3e8534c02'
+    preview_url: 'https://play.cartesia.ai/voices/f786b574-daa5-4673-aa0c-cbe3e8534c02',
+    sample_url: `${S3_PREVIEW_BASE}/Katie.mp3`
   },
   'female_avery': {
     id: 'cccc21e8-5bcf-4ff0-bc7f-be4e40afc544',
@@ -187,7 +208,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'youthful',
     description: 'Gaming Girl - high-pitched, energetic',
     tags: ['character', 'energetic', 'high-pitched', 'gaming'],
-    preview_url: 'https://play.cartesia.ai/voices/cccc21e8-5bcf-4ff0-bc7f-be4e40afc544'
+    preview_url: 'https://play.cartesia.ai/voices/cccc21e8-5bcf-4ff0-bc7f-be4e40afc544',
+    sample_url: `${S3_PREVIEW_BASE}/Avery.mp3`
   },
 
   // ── YOUNG FEMALE CHARACTERS ────────────────────────────
@@ -198,7 +220,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'youthful',
     description: 'Young Main Character - children\'s book narrations',
     tags: ['young', 'bright', 'cheerful', 'protagonist'],
-    preview_url: 'https://play.cartesia.ai/voices/32b3f3c5-7171-46aa-abe7-b598964aa793'
+    preview_url: 'https://play.cartesia.ai/voices/32b3f3c5-7171-46aa-abe7-b598964aa793',
+    sample_url: `${S3_PREVIEW_BASE}/Daisy.mp3`
   },
   'young_female_dottie': {
     id: 'e3827ec5-697a-4b7c-9704-1a23041bbc51',
@@ -207,7 +230,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'youthful',
     description: 'Sweet Main Character - earnest, very young female',
     tags: ['young', 'sweet', 'earnest', 'protagonist'],
-    preview_url: 'https://play.cartesia.ai/voices/e3827ec5-697a-4b7c-9704-1a23041bbc51'
+    preview_url: 'https://play.cartesia.ai/voices/e3827ec5-697a-4b7c-9704-1a23041bbc51',
+    sample_url: `${S3_PREVIEW_BASE}/Dottie.mp3`
   },
   'young_female_lexi': {
     id: '56b87df1-594d-4135-992c-1112bb504c59',
@@ -216,7 +240,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'youthful',
     description: 'Fun Friend - cheery young female',
     tags: ['young', 'cheery', 'fun', 'character'],
-    preview_url: 'https://play.cartesia.ai/voices/56b87df1-594d-4135-992c-1112bb504c59'
+    preview_url: 'https://play.cartesia.ai/voices/56b87df1-594d-4135-992c-1112bb504c59',
+    sample_url: `${S3_PREVIEW_BASE}/Lexi.mp3`
   },
 
   // ── SPECIAL / ACCENT CHARACTERS ────────────────────────
@@ -227,7 +252,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Confident Young Character - Spanish accent',
     tags: ['character', 'spanish', 'accent', 'unique'],
-    preview_url: 'https://play.cartesia.ai/voices/79743797-2087-422f-8dc7-86f9efca85f1'
+    preview_url: 'https://play.cartesia.ai/voices/79743797-2087-422f-8dc7-86f9efca85f1',
+    sample_url: `${S3_PREVIEW_BASE}/Fran.mp3`
   },
   'special_male_joey': {
     id: '34575e71-908f-4ab6-ab54-b08c95d6597d',
@@ -236,7 +262,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Neighborhood Guy - casual and friendly',
     tags: ['character', 'casual', 'friendly', 'unique'],
-    preview_url: 'https://play.cartesia.ai/voices/34575e71-908f-4ab6-ab54-b08c95d6597d'
+    preview_url: 'https://play.cartesia.ai/voices/34575e71-908f-4ab6-ab54-b08c95d6597d',
+    sample_url: `${S3_PREVIEW_BASE}/Joey.mp3`
   },
   'special_female_lulu': {
     id: 'e13cae5c-ec59-4f71-b0a6-266df3c9bb8e',
@@ -245,7 +272,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Madame Mischief - squeaky, kids entertainment',
     tags: ['character', 'quirky', 'squeaky', 'unique'],
-    preview_url: 'https://play.cartesia.ai/voices/e13cae5c-ec59-4f71-b0a6-266df3c9bb8e'
+    preview_url: 'https://play.cartesia.ai/voices/e13cae5c-ec59-4f71-b0a6-266df3c9bb8e',
+    sample_url: `${S3_PREVIEW_BASE}/Lulu.mp3`
   },
   'special_male_matt': {
     id: 'bfd3644b-d561-4b1c-a01f-d9af98cb67c0',
@@ -254,7 +282,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Goofy Friend - high-pitched, silly',
     tags: ['character', 'silly', 'goofy', 'unique'],
-    preview_url: 'https://play.cartesia.ai/voices/bfd3644b-d561-4b1c-a01f-d9af98cb67c0'
+    preview_url: 'https://play.cartesia.ai/voices/bfd3644b-d561-4b1c-a01f-d9af98cb67c0',
+    sample_url: `${S3_PREVIEW_BASE}/Matt.mp3`
   },
   'special_male_caspian': {
     id: 'd7862948-75c3-4c7c-ae28-2959fe166f49',
@@ -263,7 +292,8 @@ export const CARTESIA_VOICE_LIBRARY = {
     style: 'character',
     description: 'Oracle - echo-y, mystical, gravitas',
     tags: ['character', 'mystical', 'deep', 'unique'],
-    preview_url: 'https://play.cartesia.ai/voices/d7862948-75c3-4c7c-ae28-2959fe166f49'
+    preview_url: 'https://play.cartesia.ai/voices/d7862948-75c3-4c7c-ae28-2959fe166f49',
+    sample_url: `${S3_PREVIEW_BASE}/Caspian.mp3`
   }
 };
 
