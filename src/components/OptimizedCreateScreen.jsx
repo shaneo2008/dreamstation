@@ -223,12 +223,12 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false }) => 
             <div className="flex items-center justify-between mb-3">
               <label className="flex items-center gap-2 text-sm font-display font-semibold text-sleep-600">
                 <Users className="w-4 h-4 text-dream-glow" />
-                Characters (up to 6)
+                Characters (up to 10)
               </label>
               <button
                 type="button"
                 onClick={addCharacter}
-                disabled={characters.length >= 6}
+                disabled={characters.length >= 10}
                 className="flex items-center gap-1 px-3 py-1.5 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-xs font-display font-semibold text-sleep-600 hover:border-dream-glow/30 disabled:opacity-40 transition-all"
               >
                 <Plus className="h-3.5 w-3.5" />

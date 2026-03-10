@@ -83,15 +83,6 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate }) =>
     { name: 'neutral', label: 'Neutral', icon: '😐' }
   ];
 
-  const updateScriptLine = (lineId, field, value) => {
-    setScriptLines(prevLines =>
-      prevLines.map(line =>
-        line.id === lineId ? { ...line, [field]: value } : line
-      )
-    );
-    setHasUnsavedChanges(true);
-  };
-
   const saveScript = async () => {
     setIsSaving(true);
     try {
@@ -382,25 +373,34 @@ Check your S3 bucket or refresh the page to access the completed audio.`);
   return (
     <div className="min-h-full animate-fade-in">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-3 bg-white/80 backdrop-blur-sm border-b border-cream-300/50">
-        <button
-          onClick={onBack}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl font-display font-semibold text-sm text-sleep-500 hover:text-sleep-800 transition-all"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back
-        </button>
-        <div className="flex flex-col items-center">
-          <h1 className="text-lg font-display font-bold text-sleep-900">{script.title || 'Generated Script'}</h1>
-          {hasUnsavedChanges && (
-            <span className="text-xs text-dream-glow font-display font-semibold mt-0.5">• Unsaved changes</span>
-          )}
-          {lastSaved && !hasUnsavedChanges && (
-            <span className="text-xs text-success font-display font-semibold mt-0.5">Saved {lastSaved.toLocaleTimeString()}</span>
-          )}
+      <div className="px-4 py-3 bg-white/80 backdrop-blur-sm border-b border-cream-300/50">
+        {/* Row 1: Back + title + close */}
+        <div className="flex items-center gap-2 mb-2">
+          <button
+            onClick={onBack}
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl font-display font-semibold text-sm text-sleep-500 hover:text-sleep-800 transition-all shrink-0"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back
+          </button>
+          <div className="flex-1 min-w-0 text-center">
+            <h1 className="text-base font-display font-bold text-sleep-900 truncate leading-tight">{script.title || 'Generated Script'}</h1>
+            {hasUnsavedChanges && (
+              <span className="text-xs text-dream-glow font-display font-semibold">• Unsaved changes</span>
+            )}
+            {lastSaved && !hasUnsavedChanges && (
+              <span className="text-xs text-success font-display font-semibold">Saved {lastSaved.toLocaleTimeString()}</span>
+            )}
+          </div>
+          <button
+            onClick={onBack}
+            className="p-1.5 text-sleep-400 hover:text-sleep-800 transition-colors rounded-xl shrink-0"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
-        <div className="flex items-center gap-2">
-          {/* Full Audio Controls */}
+        {/* Row 2: Action buttons */}
+        <div className="flex items-center justify-end gap-2">
           <button
             onClick={generateFullAudio}
             disabled={isGeneratingFullAudio || scriptLines.length === 0}
@@ -435,12 +435,6 @@ Check your S3 bucket or refresh the page to access the completed audio.`);
             <Save className="w-3.5 h-3.5" />
             {isSaving ? 'Saving…' : 'Save'}
           </button>
-          <button
-            onClick={onBack}
-            className="p-2 text-sleep-400 hover:text-sleep-800 transition-colors rounded-xl"
-          >
-            <X className="w-5 h-5" />
-          </button>
         </div>
       </div>
 
@@ -470,16 +464,9 @@ Check your S3 bucket or refresh the page to access the completed audio.`);
                 {/* Line Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <select
-                      value={line.speaker || 'Narrator'}
-                      onChange={(e) => updateScriptLine(line.id, 'speaker', e.target.value)}
-                      className="px-3 py-1.5 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 text-sm font-display font-semibold focus:outline-none focus:border-dream-glow/50 transition-all"
-                    >
-                      <option value="Narrator">Narrator</option>
-                      {[...new Set(scriptLines.map(line => line.speaker || 'Narrator'))].filter(speaker => speaker !== 'Narrator').map((speaker, index) => (
-                        <option key={index} value={speaker}>{speaker}</option>
-                      ))}
-                    </select>
+                    <span className="px-3 py-1.5 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 text-sm font-display font-semibold">
+                      {line.speaker || 'Narrator'}
+                    </span>
                     {line.type === 'narration' && (
                       <span className="text-xs bg-pastel-mint/30 text-pastel-mint px-2 py-1 rounded-lg font-display font-semibold border border-pastel-mint/20">NARRATION</span>
                     )}
@@ -530,14 +517,10 @@ Check your S3 bucket or refresh the page to access the completed audio.`);
                   </div>
                 )}
 
-                {/* Line Text */}
-                <textarea
-                  value={line.text || ''}
-                  onChange={(e) => updateScriptLine(line.id, 'text', e.target.value)}
-                  className="w-full bg-cream-100/60 border-2 border-cream-300/40 rounded-xl p-3 text-sleep-900 placeholder-sleep-400 focus:outline-none focus:border-dream-glow/40 resize-none text-sm font-body transition-all"
-                  rows={Math.max(2, Math.ceil((line.text || '').length / 80))}
-                  placeholder="Enter dialogue or narration..."
-                />
+                {/* Line Text — read-only */}
+                <p className="w-full bg-cream-100/30 rounded-xl p-3 text-sleep-900 text-sm font-body leading-relaxed select-text">
+                  {line.text || ''}
+                </p>
               </div>
             ))}
           </div>
