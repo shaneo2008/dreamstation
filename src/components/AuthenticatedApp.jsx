@@ -252,7 +252,7 @@ const AuthenticatedApp = () => {
     <div className="min-h-full px-4 sm:px-6 py-5 sm:py-8 animate-fade-in">
       <div className="text-center mb-5 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-2 sm:mb-3 gradient-text">Your Library</h1>
-        <p className="text-sleep-500 text-sm sm:text-lg font-body">Manage your saved scripts and audio dramas</p>
+        <p className="text-sleep-500 text-sm sm:text-lg font-body">Manage your saved story creations</p>
       </div>
 
       {isLoadingScripts ? (
@@ -458,10 +458,12 @@ const AuthenticatedApp = () => {
       <main className="flex-1 pb-24 relative z-10">
         {activeTab === 'create' && renderCreateScreen()}
         {activeTab === 'buddy' && (
-          <BuddyTimerApp
-            onExit={() => setActiveTab('library')}
-            onStoryTime={() => setActiveTab('create')}
-          />
+          <div className="h-[calc(100vh-56px-80px)] overflow-y-auto">
+            <BuddyTimerApp
+              onExit={() => setActiveTab('library')}
+              onStoryTime={() => setActiveTab('create')}
+            />
+          </div>
         )}
         {activeTab === 'library' && renderLibraryScreen()}
         {activeTab === 'account' && renderAccountScreen()}
