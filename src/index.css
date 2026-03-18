@@ -317,6 +317,11 @@
     @apply bg-white/80 backdrop-blur-lg border border-cream-300/50 rounded-3xl shadow-lg;
   }
 
+  .input-field {
+    @apply w-full px-4 py-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 placeholder-sleep-400 font-sans;
+    @apply focus:border-dream-glow/50 focus:outline-none transition-all;
+  }
+
   .bg-sleep-gradient {
     background: linear-gradient(135deg, #FFF9EE 0%, #F5E6D3 50%, #E8D5BC 100%);
   }

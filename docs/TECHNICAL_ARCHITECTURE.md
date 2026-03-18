@@ -661,11 +661,11 @@ jobs:
 
 
 
-## 📝 Script Editor Interface Architecture
+## 📝 Story Editor Interface Architecture
 
 ### Component Hierarchy
 
-The Script Editor Interface represents the most complex component system in FanCast AI, implementing professional-grade editing capabilities with real-time state management.
+The Story Editor Interface represents the most complex component system in FanCast AI, implementing professional-grade editing capabilities with real-time state management.
 
 ```
 ScriptEditor (Main Container)
@@ -699,10 +699,10 @@ ScriptEditor (Main Container)
 
 ### State Management Architecture
 
-#### Script Editor State Structure
+#### Story Editor State Structure
 
 ```javascript
-// Main Script Editor State
+// Main Story Editor State
 const [scriptData, setScriptData] = useState({
   id: 'script_unique_id',
   title: 'The Quantum Detective - Episode 1',
@@ -980,7 +980,7 @@ const saveScript = async (scriptData) => {
 
 #### Component Modularity
 
-The Script Editor Interface is designed for easy extension:
+The Story Editor Interface is designed for easy extension:
 
 - **Plugin Architecture**: Ready for additional annotation types
 - **Component Composition**: Easily add new script line types
@@ -1006,7 +1006,7 @@ The Script Editor Interface is designed for easy extension:
 #### Component Testing Strategy
 
 ```javascript
-// Script Editor Interface Tests
+// Story Editor Interface Tests
 describe('ScriptEditor', () => {
   test('renders script lines correctly', () => {
     render(<ScriptEditor scriptData={mockScriptData} />);
@@ -1051,5 +1051,5 @@ describe('ScriptEditor', () => {
 
 ---
 
-The Script Editor Interface architecture represents a sophisticated, production-ready implementation that balances performance, usability, and scalability while maintaining the flexibility needed for future enhancements and backend integration.
+The Story Editor Interface architecture represents a sophisticated, production-ready implementation that balances performance, usability, and scalability while maintaining the flexibility needed for future enhancements and backend integration.
 

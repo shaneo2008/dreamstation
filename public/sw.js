@@ -30,6 +30,59 @@ self.addEventListener('activate', (event) => {
   self.clients.claim();
 });
 
+// Push event - handle incoming push notifications
+self.addEventListener('push', (event) => {
+  let data = { title: 'DreamStation', body: 'Time for tonight\'s story ✨', url: '/' };
+
+  if (event.data) {
+    try {
+      data = { ...data, ...event.data.json() };
+    } catch (e) {
+      data.body = event.data.text();
+    }
+  }
+
+  const options = {
+    body: data.body,
+    icon: '/icon-192.png',
+    badge: '/icon-192.png',
+    tag: data.tag || 'dreamstation-notification',
+    renotify: true,
+    data: { url: data.url || '/' },
+    actions: data.actions || [],
+  };
+
+  event.waitUntil(
+    self.registration.showNotification(data.title, options)
+  );
+});
+
+// Notification click - deep-link to the correct screen
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+
+  const urlToOpen = event.notification.data?.url || '/';
+
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true })
+      .then((clientList) => {
+        // Focus existing window if available
+        for (const client of clientList) {
+          if (client.url.includes(self.location.origin) && 'focus' in client) {
+            client.postMessage({
+              type: 'NOTIFICATION_CLICK',
+              url: urlToOpen,
+              tag: event.notification.tag,
+            });
+            return client.focus();
+          }
+        }
+        // Otherwise open a new window
+        return self.clients.openWindow(urlToOpen);
+      })
+  );
+});
+
 // Fetch event - network first, fallback to cache
 // IMPORTANT: Skip external API calls entirely (n8n, Supabase, S3, etc.)
 self.addEventListener('fetch', (event) => {

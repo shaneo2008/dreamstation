@@ -77,6 +77,7 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false }) => 
   const [characters, setCharacters] = useState([{ name: '', description: '' }]);
   const [genre, setGenre] = useState('');
   const [specialInstructions, setSpecialInstructions] = useState('');
+  const [parentNote, setParentNote] = useState('');
 
   const handleTemplateSelect = (templateKey) => {
     if (templateKey && QUICKSTART_TEMPLATES[templateKey]) {
@@ -139,7 +140,8 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false }) => 
       preferences: {
         specialInstructions: specialInstructions,
         scriptLengthRequirement: "Generate exactly 130-140 script lines for a 10-minute audio drama. Mix of 75-85 dialogue lines (5-12 words each) and 55-60 narration lines (12-20 words each) for proper pacing and timing."
-      }
+      },
+      parentNote: parentNote.trim() || null
     };
     onGenerate?.(payload);
   };
@@ -290,6 +292,19 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false }) => 
                 className="w-full p-2.5 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 placeholder-sleep-400 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
               />
             </div>
+          </div>
+
+          {/* Parent Note — optional nightly context */}
+          <div>
+            <label htmlFor="parent-note" className="block text-sm font-display font-semibold text-sleep-600 mb-2">Anything on their mind tonight?</label>
+            <textarea
+              id="parent-note"
+              value={parentNote}
+              onChange={(e) => setParentNote(e.target.value)}
+              placeholder="Optional — helps personalise tonight's story"
+              rows={2}
+              className="w-full p-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl resize-none text-sleep-900 placeholder-sleep-400 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+            />
           </div>
 
           {/* Ready to Generate */}

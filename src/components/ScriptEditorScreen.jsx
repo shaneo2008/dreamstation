@@ -2,12 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { X, ChevronDown, ChevronUp, Plus, Trash2, Play, Music, ArrowLeft, Save } from 'lucide-react';
 import { saveScriptToDatabase } from '../services/scriptSaveService';
 import { generateAndPlayPreview, VOICE_OPTIONS } from '../services/linePreviewService';
-import SimpleAudioPlayer from './AudioPlayer/SimpleAudioPlayer';
 import { generateFullScriptTTS, isFullScriptTTSAvailable } from '../services/fullScriptTTSService';
 import { createDemoAudioProduction } from '../services/demoAudioService';
 import VoiceAssignmentPanel from './VoiceAssignmentPanel';
 
-const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate }) => {
+const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPlayAudio }) => {
   const [scriptLines, setScriptLines] = useState([]);
   const [showAnnotationModal, setShowAnnotationModal] = useState(false);
   const [selectedLineId, setSelectedLineId] = useState(null);
@@ -17,10 +16,7 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate }) =>
   const [previewingLineId, setPreviewingLineId] = useState(null);
   const [voiceAssignments, setVoiceAssignments] = useState({});
 
-  // Full audio player state
-  const [showAudioPlayer, setShowAudioPlayer] = useState(false);
-  const [audioUrl, setAudioUrl] = useState(null);
-  const [timingMetadata, setTimingMetadata] = useState(null);
+  // Full audio generation state (playback is handled by global MiniPlayer)
   const [isGeneratingFullAudio, setIsGeneratingFullAudio] = useState(false);
 
   // Initialize script lines when script prop changes
@@ -49,28 +45,17 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate }) =>
 
   // Auto-play audio if the script has audio and autoPlayAudio flag is set
   useEffect(() => {
-    console.log('🔍 Script object for audio:', {
-      hasScript: !!script,
-      title: script?.title,
-      autoPlayAudio: script?.autoPlayAudio,
-      audioUrl: script?.audioUrl,
-      hasAudio: script?.hasAudio,
-      audioDuration: script?.audioDuration,
-      scriptKeys: script ? Object.keys(script) : 'no script'
-    });
-
     if (script && script.autoPlayAudio && script.audioUrl) {
-      console.log('🎵 Auto-playing audio for script:', script.title);
-      console.log('🎵 Audio URL:', script.audioUrl);
-      setAudioUrl(script.audioUrl);
-      setShowAudioPlayer(true);
-    } else if (script && script.autoPlayAudio) {
-      console.warn('⚠️ Auto-play requested but no audioUrl found:', {
+      console.log('🎵 Auto-playing audio via global player:', script.title);
+      onPlayAudio?.({
         audioUrl: script.audioUrl,
-        hasAudio: script.hasAudio
+        title: script.title,
+        scriptLines: scriptLines,
+        timingMetadata: null
       });
     }
-  }, [script]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [script?.autoPlayAudio, script?.audioUrl]);
 
   const annotationOptions = [
     { name: 'whisper', label: 'Whisper', icon: '🤫' },
@@ -274,63 +259,44 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate }) =>
         const production = await generateFullScriptTTS(scriptData, { id: userId });
 
         if (production.success) {
-          // Use real production data
-          console.log('🎵 Setting audio URL:', production.audioUrl);
-          console.log('📊 Setting timing metadata:', production.timingMetadata);
-
-          setTimingMetadata(production.timingMetadata);
-          setAudioUrl(production.audioUrl || production.individual_lines?.[0]?.audio_url);
-          setShowAudioPlayer(true);
-
           console.log('✅ Real Full Script TTS completed:', {
             production_id: production.production_id,
             duration: production.totalDuration,
-            audioUrl: production.audioUrl,
-            lines: production.timingMetadata?.lines?.length || scriptLines.length,
-            status: production.status,
-            showAudioPlayer: true
+            audioUrl: production.audioUrl
           });
 
-          // Refresh script list to show new audio production in library
-          if (onScriptUpdate) {
-            console.log('🔄 Refreshing script library after TTS completion...');
-            onScriptUpdate();
-          }
-        } else if (production.processing) {
-          // Handle successful background processing (CORS/timeout but S3 success)
-          console.log('🔄 TTS processing completed in background - audio available in S3');
-          alert(`✅ Audio generation completed successfully! 
-          
-The workflow processed in the background and generated a ${production.estimated_duration || '5+ minute'} audio file.
-          
-Check your S3 bucket or refresh the page to access the completed audio.`);
+          onPlayAudio?.({
+            audioUrl: production.audioUrl || production.individual_lines?.[0]?.audio_url,
+            title: script?.title || 'Untitled',
+            scriptLines: scriptLines,
+            timingMetadata: production.timingMetadata
+          });
 
-          // Refresh script list to show new audio production
-          if (onScriptUpdate) {
-            console.log('🔄 Refreshing script library after background TTS completion...');
-            onScriptUpdate();
-          }
+          if (onScriptUpdate) onScriptUpdate();
+        } else if (production.processing) {
+          console.log('🔄 TTS processing completed in background - audio available in S3');
+          alert(`✅ Audio generation completed successfully!\n\nThe workflow processed in the background and generated a ${production.estimated_duration || '5+ minute'} audio file.\n\nCheck your S3 bucket or refresh the page to access the completed audio.`);
+          if (onScriptUpdate) onScriptUpdate();
         } else if (production.fallback_to_demo) {
-          // Fallback to demo if real TTS fails
           console.log('⚠️ Full Script TTS failed, falling back to demo...');
           const demoProduction = createDemoAudioProduction(scriptLines);
-          setTimingMetadata(demoProduction.timingMetadata);
-          setAudioUrl(demoProduction.audioUrl);
-          setShowAudioPlayer(true);
+          onPlayAudio?.({
+            audioUrl: demoProduction.audioUrl,
+            title: script?.title || 'Untitled',
+            scriptLines: scriptLines,
+            timingMetadata: demoProduction.timingMetadata
+          });
         } else {
           throw new Error(production.error || 'Full Script TTS generation failed');
         }
       } else {
-        // Fallback to demo if webhook not configured
         console.log('⚠️ Full Script TTS webhook not configured, using demo...');
         const demoProduction = createDemoAudioProduction(scriptLines);
-        setTimingMetadata(demoProduction.timingMetadata);
-        setAudioUrl(demoProduction.audioUrl);
-        setShowAudioPlayer(true);
-
-        console.log('✅ Demo audio player ready with realistic timing metadata:', {
-          duration: demoProduction.timingMetadata.total_duration,
-          lines: demoProduction.timingMetadata.lines.length
+        onPlayAudio?.({
+          audioUrl: demoProduction.audioUrl,
+          title: script?.title || 'Untitled',
+          scriptLines: scriptLines,
+          timingMetadata: demoProduction.timingMetadata
         });
       }
 
@@ -340,11 +306,6 @@ Check your S3 bucket or refresh the page to access the completed audio.`);
     } finally {
       setIsGeneratingFullAudio(false);
     }
-  };
-
-  // Toggle audio player visibility
-  const toggleAudioPlayer = () => {
-    setShowAudioPlayer(!showAudioPlayer);
   };
 
   /* ─────────────────────────────────────────────
@@ -413,16 +374,6 @@ Check your S3 bucket or refresh the page to access the completed audio.`);
             <Music className="w-3.5 h-3.5" />
             {isGeneratingFullAudio ? 'Generating…' : 'Full Audio'}
           </button>
-
-          {audioUrl && (
-            <button
-              onClick={toggleAudioPlayer}
-              className="px-3 py-2 rounded-xl font-display font-semibold text-xs bg-cream-200 hover:bg-cream-300 text-sleep-700 flex items-center gap-1.5 transition-all"
-            >
-              <Play className="w-3.5 h-3.5" />
-              {showAudioPlayer ? 'Hide' : 'Player'}
-            </button>
-          )}
 
           <button
             onClick={saveScript}
@@ -527,16 +478,6 @@ Check your S3 bucket or refresh the page to access the completed audio.`);
         </div>
       </div>
 
-
-      {/* Audio Player */}
-      {showAudioPlayer && audioUrl && (
-        <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t-2 border-cream-300/50 p-4 z-40 max-h-[60vh] overflow-y-auto shadow-dream">
-          <SimpleAudioPlayer
-            audioUrl={audioUrl}
-            timingMetadata={timingMetadata || null}
-          />
-        </div>
-      )}
 
       {/* Annotation Modal */}
       {showAnnotationModal && (

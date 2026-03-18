@@ -1,0 +1,241 @@
+{
+  "name": "DreamStation Morning Reflection",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 1 }]
+        }
+      },
+      "id": "mr-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst h = String(now.getUTCHours()).padStart(2, '0');\nconst m = String(now.getUTCMinutes()).padStart(2, '0');\nconst checkTime = `${h}:${m}:00`;\n\n// Only run between 06:00 and 12:00 UTC\nconst hour = now.getUTCHours();\nif (hour < 6 || hour > 12) {\n  console.log('Outside morning window, skipping');\n  return [];\n}\n\nconsole.log('Checking for morning reflections at:', checkTime);\nreturn [{ json: { checkTime } }];"
+      },
+      "id": "mr-time",
+      "name": "Check Time Window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/notification_preferences?morning_reflection_time=eq.{{ $json.checkTime }}&push_subscription=not.is.null&select=*,child_profiles!inner(id,name,mode,user_id,personality_description,neuro_flags,neuro_profile,age,gender_pronoun)",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "mr-fetch-prefs",
+      "name": "Fetch Matching Preferences",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.first().json;\nconst prefs = Array.isArray(items) ? items : [items];\n\nif (!prefs || prefs.length === 0 || !prefs[0].id) {\n  console.log('No matching preferences found');\n  return [];\n}\n\n// Filter to Full Programme only\nconst fullProgramme = prefs.filter(p => p.child_profiles?.mode === 'full_programme');\nconsole.log(`Found ${fullProgramme.length} Full Programme preference(s)`);\n\nreturn fullProgramme.map(p => ({ json: p }));"
+      },
+      "id": "mr-split",
+      "name": "Filter Full Programme",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Check for last night's session (5pm yesterday to midnight)\nconst pref = $input.item.json;\nconst childId = pref.child_id;\n\nconst now = new Date();\nconst yesterday5pm = new Date(now);\nyesterday5pm.setDate(now.getDate() - 1);\nyesterday5pm.setHours(17, 0, 0, 0);\n\nconst todayMidnight = new Date(now);\ntodayMidnight.setHours(0, 0, 0, 0);\n\nreturn [{\n  json: {\n    ...pref,\n    yesterdayFrom: yesterday5pm.toISOString(),\n    todayMidnight: todayMidnight.toISOString()\n  }\n}];"
+      },
+      "id": "mr-dates",
+      "name": "Calculate Date Range",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/story_sessions?child_id=eq.{{ $json.child_id }}&created_at=gte.{{ $json.yesterdayFrom }}&created_at=lte.{{ $json.todayMidnight }}&order=created_at.desc&limit=1",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "mr-last-session",
+      "name": "Fetch Last Night Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const sessions = $input.first().json;\nconst sessionArr = Array.isArray(sessions) ? sessions : [];\n\nif (sessionArr.length === 0) {\n  console.log('No session last night for child:', $('Calculate Date Range').item.json.child_id, '— skipping');\n  return [];\n}\n\nconst session = sessionArr[0];\nconsole.log('Found last night session:', session.id);\n\nreturn [{ json: { lastSession: session } }];"
+      },
+      "id": "mr-check-session",
+      "name": "Check Session Exists",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/story_sessions?child_id=eq.{{ $('Calculate Date Range').item.json.child_id }}&order=created_at.desc&limit=6",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "mr-history",
+      "name": "Fetch Session History",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/child_dynamic_context?child_id=eq.{{ $('Calculate Date Range').item.json.child_id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "mr-context",
+      "name": "Fetch Dynamic Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 200],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const pref = $('Calculate Date Range').item.json;\nconst profile = pref.child_profiles;\nconst session = $('Check Session Exists').first().json.lastSession;\nconst historyRaw = $('Fetch Session History').first().json;\nconst history = Array.isArray(historyRaw) ? historyRaw : [];\nconst ctxRaw = $('Fetch Dynamic Context').first().json;\nconst ctx = Array.isArray(ctxRaw) ? ctxRaw[0] || {} : ctxRaw || {};\n\nconst systemPrompt = `You are a warm, perceptive child development observer helping a parent notice what is happening in their child's emotional world through bedtime stories. You have access to the child's profile and their recent story sessions. Your job is to generate exactly three observations the parent can react to the following morning.\n\nOBSERVATION RULES:\n- Each observation must be specific to this child — never generic\n- Each observation must interpret, not just describe\n- Each observation must pass this test: would the parent have noticed and named this themselves? If yes, replace it\n- Use warm, plain language — not clinical terms\n- Maximum 2 sentences per observation\n- Three types: story observation, behaviour observation, pattern observation. Use all three where possible.\n- Pattern observations only if 4+ nights of data exist\n- Never mention the app, the study, or therapeutic frameworks\n- Never diagnose. Observe and reflect only.\n- End each observation with something the parent can notice or do today\n\nOUTPUT FORMAT — return valid JSON only:\n{\n  \"observations\": [\n    { \"type\": \"story\", \"text\": \"...\" },\n    { \"type\": \"behaviour\", \"text\": \"...\" },\n    { \"type\": \"pattern\", \"text\": \"...\" }\n  ]\n}`;\n\nconst historyText = history.length > 1\n  ? history.slice().reverse().map((s, i) =>\n    `Night ${i + 1}: prompt=\"${s.story_prompt || 'none'}\", themes=${(s.themes || []).join(',') || 'none'}`\n  ).join('\\n')\n  : 'First night — no history yet';\n\nconst userPrompt = `CHILD PROFILE:\nName: ${profile.name}, Age: ${profile.age}\nPersonality: ${profile.personality_description || 'Not provided'}\nNeuro flags: ${(profile.neuro_flags || []).join(', ') || 'None'}\nFear flags: ${(ctx.fear_flags || []).join(', ') || 'None'}\nCurrent stressors: ${ctx.current_stressors || 'None noted'}\nAllies: ${(ctx.allies || []).filter(a => a.name).map(a => a.name + (a.relationship ? ' (' + a.relationship + ')' : '')).join(', ') || 'None'}\n\nLAST NIGHT:\nDate: ${session.created_at}\nMode: ${session.mode || 'co-creation'}\nStory prompt (child's words): ${session.story_prompt || 'None'}\nParent note: ${session.parent_note || 'None'}\nStory themes: ${(session.themes || []).join(', ') || 'Not tagged'}\nVillain appeared: ${session.villain_appeared ?? 'Unknown'}\n\nRECENT HISTORY (last 6 nights, oldest first):\n${historyText}\n\nGenerate three observations now.`;\n\nconsole.log('Built Claude prompt for:', profile.name);\n\nreturn [{\n  json: {\n    claudePayload: {\n      model: 'claude-sonnet-4-6-20250514',\n      max_tokens: 1024,\n      system: systemPrompt,\n      messages: [{ role: 'user', content: userPrompt }]\n    },\n    sessionId: session.id,\n    childId: pref.child_id,\n    userId: pref.user_id,\n    childName: profile.name,\n    subscription: pref.push_subscription,\n    storyPrompt: session.story_prompt\n  }\n}];"
+      },
+      "id": "mr-build-prompt",
+      "name": "Build Claude Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "YOUR_CLAUDE_API_KEY_HERE" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.claudePayload) }}",
+        "options": {}
+      },
+      "id": "mr-claude",
+      "name": "Call Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nlet content = '';\n\nif (response.content && response.content[0]) {\n  content = response.content[0].text;\n} else {\n  throw new Error('Unexpected Claude response format: ' + JSON.stringify(response).substring(0, 200));\n}\n\n// Clean and parse JSON\nconst cleaned = content.replace(/```json\\s*/g, '').replace(/```\\s*$/g, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error(`Failed to parse Claude response: ${e.message}. Content: ${cleaned.substring(0, 300)}`);\n}\n\nif (!parsed.observations || parsed.observations.length !== 3) {\n  throw new Error(`Expected 3 observations, got ${parsed.observations?.length || 0}`);\n}\n\nconsole.log('Claude returned 3 observations');\n\nreturn [{ json: { observations: parsed.observations } }];"
+      },
+      "id": "mr-parse",
+      "name": "Parse Claude Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/morning_reactions",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ child_id: $('Build Claude Prompt').first().json.childId, session_id: $('Build Claude Prompt').first().json.sessionId, user_id: $('Build Claude Prompt').first().json.userId, observations: $json.observations, reactions: [], skipped: false, partially_complete: false, generated_at: new Date().toISOString() }) }}",
+        "options": {}
+      },
+      "id": "mr-insert",
+      "name": "Insert Morning Reaction",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2420, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Build Claude Prompt').first().json;\nconst childName = data.childName;\nconst storyPrompt = data.storyPrompt;\n\nlet body;\nif (storyPrompt) {\n  const summary = storyPrompt.length > 40 ? storyPrompt.substring(0, 40) + '...' : storyPrompt;\n  body = `${childName} wanted \"${summary}\" last night — we noticed something. Tap to see.`;\n} else {\n  body = `We have three things to share from ${childName}'s night. Tap to see.`;\n}\n\nreturn [{\n  json: {\n    subscription: data.subscription,\n    payload: {\n      title: 'DreamStation',\n      body: body,\n      tag: 'morning-reflection',\n      url: '/?morning=true'\n    }\n  }\n}];"
+      },
+      "id": "mr-notif",
+      "name": "Build Push Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://9puilg0pdg.execute-api.eu-west-1.amazonaws.com/default/web-push-sender",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ subscription: $json.subscription, payload: $json.payload }) }}",
+        "options": {}
+      },
+      "id": "mr-send",
+      "name": "Send Push via Lambda",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2860, 0]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": { "main": [[{ "node": "Check Time Window", "type": "main", "index": 0 }]] },
+    "Check Time Window": { "main": [[{ "node": "Fetch Matching Preferences", "type": "main", "index": 0 }]] },
+    "Fetch Matching Preferences": { "main": [[{ "node": "Filter Full Programme", "type": "main", "index": 0 }]] },
+    "Filter Full Programme": { "main": [[{ "node": "Calculate Date Range", "type": "main", "index": 0 }]] },
+    "Calculate Date Range": { "main": [[{ "node": "Fetch Last Night Session", "type": "main", "index": 0 }]] },
+    "Fetch Last Night Session": { "main": [[{ "node": "Check Session Exists", "type": "main", "index": 0 }]] },
+    "Check Session Exists": { "main": [[{ "node": "Fetch Session History", "type": "main", "index": 0 }, { "node": "Fetch Dynamic Context", "type": "main", "index": 0 }]] },
+    "Fetch Session History": { "main": [[{ "node": "Build Claude Prompt", "type": "main", "index": 0 }]] },
+    "Build Claude Prompt": { "main": [[{ "node": "Call Claude API", "type": "main", "index": 0 }]] },
+    "Call Claude API": { "main": [[{ "node": "Parse Claude Response", "type": "main", "index": 0 }]] },
+    "Parse Claude Response": { "main": [[{ "node": "Insert Morning Reaction", "type": "main", "index": 0 }]] },
+    "Insert Morning Reaction": { "main": [[{ "node": "Build Push Notification", "type": "main", "index": 0 }]] },
+    "Build Push Notification": { "main": [[{ "node": "Send Push via Lambda", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "instanceId": "907ab9bfe98db377a72a66df1b347ab59bf71d9112c7983facef6dbf9c6f87d3"
+  },
+  "tags": []
+}

@@ -1,15 +1,23 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Search, BookOpen, Library, User, Plus, Edit, Play, Trash2, PawPrint, Moon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ScriptEditorScreen from './ScriptEditorScreen';
 import OptimizedCreateScreen from './OptimizedCreateScreen';
 import BuddyTimerApp from '../features/buddy-timer/BuddyTimerApp';
+import ModeSelectionScreen from './onboarding/ModeSelectionScreen';
+import OnboardingFlow from './onboarding/OnboardingFlow';
+import PushPermissionPrompt from './onboarding/PushPermissionPrompt';
+import MorningReflectionPopup from './MorningReflectionPopup';
+import SettingsScreen from './settings/SettingsScreen';
+import MiniPlayer from './AudioPlayer/MiniPlayer';
+import ExpandedPlayer from './AudioPlayer/ExpandedPlayer';
 import { loadSavedScripts, loadScript, deleteScript } from '../services/scriptSaveService';
 import { generateAIScript } from '../services/aiScriptGenerationService';
 import { autoAssignVoices } from '../services/cartesiaVoiceService';
+import { db } from '../lib/supabase';
 
 const AuthenticatedApp = () => {
-  const { user, signOut } = useAuth();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = useState('library');
   const [showCreateStory, setShowCreateStory] = useState(false);
   const [showScriptEditor, setShowScriptEditor] = useState(false);
@@ -19,6 +27,90 @@ const AuthenticatedApp = () => {
   const [shouldRefreshLibrary, setShouldRefreshLibrary] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [showPushPrompt, setShowPushPrompt] = useState(false);
+  const [pendingChildName, setPendingChildName] = useState('');
+  const [morningReaction, setMorningReaction] = useState(null);
+  const [showMorningPopup, setShowMorningPopup] = useState(false);
+
+  // Onboarding state
+  const [childProfiles, setChildProfiles] = useState(null); // null = loading, [] = none
+  const [activeChildId, setActiveChildId] = useState(null);
+  const [showModeSelection, setShowModeSelection] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [hasHadFreeStory, setHasHadFreeStory] = useState(false);
+
+  // Global audio player state — single shared <audio> element
+  const globalAudioRef = useRef(null);
+  const [globalAudio, setGlobalAudio] = useState(null); // { audioUrl, title, scriptLines, timingMetadata }
+  const [showExpandedPlayer, setShowExpandedPlayer] = useState(false);
+
+  const handlePlayAudio = useCallback((audioData) => {
+    setGlobalAudio(audioData);
+    // Load the new audio source into the shared element
+    const audio = globalAudioRef.current;
+    if (audio && audioData?.audioUrl) {
+      audio.src = audioData.audioUrl;
+      audio.load();
+      audio.play().catch(err => console.warn('Auto-play blocked:', err));
+    }
+  }, []);
+
+  const handleCloseAudio = useCallback(() => {
+    const audio = globalAudioRef.current;
+    if (audio) { audio.pause(); audio.removeAttribute('src'); audio.load(); }
+    setGlobalAudio(null);
+    setShowExpandedPlayer(false);
+  }, []);
+
+  // Load child profiles on mount
+  useEffect(() => {
+    const loadProfiles = async () => {
+      if (!user?.id) return;
+      try {
+        const profiles = await db.getChildProfiles(user.id);
+        setChildProfiles(profiles || []);
+        if (profiles && profiles.length > 0) {
+          setActiveChildId(profiles[0].id);
+          setPendingChildName(profiles[0].name);
+          // Check for pending morning reaction (unreacted, from today)
+          try {
+            const reactions = await db.getRecentMorningReactions(profiles[0].id, 1);
+            if (reactions && reactions.length > 0) {
+              const latest = reactions[0];
+              if (!latest.reacted_at && !latest.skipped) {
+                setMorningReaction(latest);
+              }
+            }
+          } catch (reactErr) {
+            console.warn('Could not check morning reactions:', reactErr.message);
+          }
+        }
+        // Check if user has had a free story (any scripts exist)
+        const freeStoryFlag = localStorage.getItem(`ds_free_story_${user.id}`);
+        if (freeStoryFlag) setHasHadFreeStory(true);
+      } catch (err) {
+        console.error('Error loading child profiles:', err);
+        setChildProfiles([]);
+      }
+    };
+    loadProfiles();
+  }, [user?.id]);
+
+  // Listen for notification deep-links from service worker
+  useEffect(() => {
+    const handleMessage = (event) => {
+      if (event.data?.type === 'NOTIFICATION_CLICK') {
+        const tag = event.data.tag;
+        if (tag === 'morning-reflection' && morningReaction) {
+          setShowMorningPopup(true);
+        } else if (tag === 'evening-reminder') {
+          setActiveTab('create');
+        }
+      }
+    };
+    navigator.serviceWorker?.addEventListener('message', handleMessage);
+    return () => navigator.serviceWorker?.removeEventListener('message', handleMessage);
+  }, [morningReaction]);
 
   // Define loadUserScripts function before useEffect
   const loadUserScripts = useCallback(async () => {
@@ -106,10 +198,73 @@ const AuthenticatedApp = () => {
     setDeleteConfirmation(null);
   };
 
+  // Mark free story as used (called after first generation)
+  const markFreeStoryUsed = () => {
+    localStorage.setItem(`ds_free_story_${user.id}`, 'true');
+    setHasHadFreeStory(true);
+  };
+
+  // Handle mode selection callbacks
+  const handleJustStoriesComplete = (profileId) => {
+    setActiveChildId(profileId);
+    setShowModeSelection(false);
+    setChildProfiles(prev => prev ? [...prev] : []);
+    // Reload profiles
+    db.getChildProfiles(user.id).then(p => {
+      setChildProfiles(p || []);
+      if (p && p.length > 0) setActiveChildId(p[0].id);
+    });
+  };
+
+  const handleFullProgrammeSelect = () => {
+    setShowModeSelection(false);
+    setShowOnboarding(true);
+  };
+
+  const handleOnboardingComplete = (profileId) => {
+    setActiveChildId(profileId);
+    setShowOnboarding(false);
+    // Reload profiles and show push prompt
+    db.getChildProfiles(user.id).then(p => {
+      setChildProfiles(p || []);
+      if (p && p.length > 0) {
+        setActiveChildId(p[0].id);
+        setPendingChildName(p[0].name);
+      }
+      // Show push permission prompt after onboarding
+      setShowPushPrompt(true);
+    });
+  };
+
+  const handleOnboardingSkip = () => {
+    setShowOnboarding(false);
+    setShowModeSelection(false);
+  };
+
   /* ─────────────────────────────────────────────
      Create Screen — with n8n + Supabase integration
      ───────────────────────────────────────────── */
   const renderCreateScreen = () => {
+    // Gate: Show onboarding flow if active
+    if (showOnboarding) {
+      return (
+        <OnboardingFlow
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
+        />
+      );
+    }
+
+    // Gate: Show mode selection if needed
+    if (showModeSelection) {
+      return (
+        <ModeSelectionScreen
+          onSelectJustStories={handleJustStoriesComplete}
+          onSelectFullProgramme={handleFullProgrammeSelect}
+        />
+      );
+    }
+
     // Show Script Editor when showScriptEditor is true
     if (showScriptEditor) {
       return (
@@ -130,6 +285,7 @@ const AuthenticatedApp = () => {
             // Trigger library refresh after TTS completion
             setShouldRefreshLibrary(true);
           }}
+          onPlayAudio={handlePlayAudio}
         />
       );
     }
@@ -145,6 +301,37 @@ const AuthenticatedApp = () => {
             setIsGenerating(true);
 
             try {
+              // Enrich payload with child profile if available
+              if (activeChildId) {
+                try {
+                  const fullProfile = await db.getFullChildProfile(activeChildId);
+                  if (fullProfile) {
+                    const ctx = fullProfile.child_dynamic_context;
+                    payload.childProfile = {
+                      childId: fullProfile.id,
+                      name: fullProfile.name,
+                      age: fullProfile.age,
+                      genderPronoun: fullProfile.gender_pronoun,
+                      personalityDescription: fullProfile.personality_description,
+                      neuroFlags: fullProfile.neuro_flags || [],
+                      neuroProfile: fullProfile.neuro_profile,
+                      interests: fullProfile.interests || [],
+                      mode: fullProfile.mode,
+                      // Dynamic context
+                      allies: ctx?.allies || [],
+                      pets: ctx?.pets || [],
+                      currentStressors: ctx?.current_stressors,
+                      fearFlags: ctx?.fear_flags || [],
+                      socialDifficulty: ctx?.social_difficulty,
+                      bedtimeDescription: ctx?.bedtime_description,
+                    };
+                    console.log('🧒 Child profile injected into payload:', fullProfile.name);
+                  }
+                } catch (profileErr) {
+                  console.warn('⚠️ Could not load child profile, generating without:', profileErr.message);
+                }
+              }
+
               // Add loading state
               console.log('Calling n8n webhook with async polling...');
 
@@ -196,6 +383,23 @@ const AuthenticatedApp = () => {
                   console.log('ℹ️ No characters data from Gemini, skipping auto-assign');
                 }
 
+                // Create story_session record if child profile exists
+                if (activeChildId && result.script_id) {
+                  try {
+                    await db.createStorySession({
+                      child_id: activeChildId,
+                      user_id: user.id,
+                      story_prompt: payload.concept?.initialConcept || '',
+                      parent_note: payload.parentNote || null,
+                      story_id: payload.storyId,
+                      mode: 'co-creation',
+                    });
+                    console.log('📝 Story session recorded for child:', activeChildId);
+                  } catch (sessionErr) {
+                    console.warn('⚠️ Could not create story session:', sessionErr.message);
+                  }
+                }
+
                 // Store the script data in component state
                 setGeneratedScript(transformedScript);
 
@@ -232,9 +436,20 @@ const AuthenticatedApp = () => {
 
         <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-6 mb-6 shadow-card">
           <h2 className="text-xl font-display font-semibold mb-4 text-sleep-900">Ready to Create?</h2>
-          <p className="text-sleep-500 mb-6 font-body">Use our advanced AI-powered script generator to bring your stories to life.</p>
+          <p className="text-sleep-500 mb-6 font-body">Use our advanced AI-powered story generator to bring your stories to life.</p>
           <button
-            onClick={() => setShowCreateStory(true)}
+            onClick={() => {
+              // Gate: if no child profile exists and user has had their free story, show mode selection
+              if (childProfiles && childProfiles.length === 0 && hasHadFreeStory) {
+                setShowModeSelection(true);
+                return;
+              }
+              // If no profile and no free story yet, allow one free creation
+              if (childProfiles && childProfiles.length === 0 && !hasHadFreeStory) {
+                markFreeStoryUsed();
+              }
+              setShowCreateStory(true);
+            }}
             className="w-full bg-dream-glow hover:bg-dream-aurora text-white font-display font-bold py-3.5 px-6 rounded-2xl transition-all duration-200 flex items-center justify-center gap-2 shadow-glow-sm active:scale-[0.98]"
           >
             <Plus className="w-5 h-5" />
@@ -258,23 +473,23 @@ const AuthenticatedApp = () => {
       {isLoadingScripts ? (
         <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-6 text-center shadow-card">
           <div className="animate-spin text-2xl mb-4">⏳</div>
-          <p className="text-sleep-500 font-body">Loading your scripts...</p>
+          <p className="text-sleep-500 font-body">Loading your stories...</p>
         </div>
       ) : savedScripts.length === 0 ? (
         <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-6 text-center shadow-card">
-          <h2 className="text-lg sm:text-xl font-display font-semibold mb-4 text-sleep-900">No Saved Scripts</h2>
-          <p className="text-sleep-500 mb-6 font-body text-sm sm:text-base">You haven't saved any scripts yet. Create and save your first script to see it here.</p>
+          <h2 className="text-lg sm:text-xl font-display font-semibold mb-4 text-sleep-900">No Saved Stories</h2>
+          <p className="text-sleep-500 mb-6 font-body text-sm sm:text-base">You haven't saved any stories yet. Create and save your first story to see it here.</p>
           <button
             onClick={() => setActiveTab('create')}
             className="w-full sm:w-auto bg-dream-glow hover:bg-dream-aurora text-white font-display font-bold py-3.5 sm:py-3 px-6 rounded-2xl transition-all duration-200 shadow-glow-sm active:scale-[0.98] text-sm sm:text-base"
           >
-            Create Your First Script
+            Create Your First Story
           </button>
         </div>
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-display font-semibold text-sleep-900">Saved Scripts ({savedScripts.length})</h2>
+            <h2 className="text-lg sm:text-xl font-display font-semibold text-sleep-900">Saved Stories ({savedScripts.length})</h2>
             <button
               onClick={loadUserScripts}
               className="px-3 sm:px-4 py-2 bg-white/80 hover:bg-white border-2 border-cream-300/50 text-sleep-600 hover:text-sleep-900 rounded-xl transition-all font-display font-semibold text-xs sm:text-sm"
@@ -321,19 +536,20 @@ const AuthenticatedApp = () => {
                   {script.hasAudio && script.audioUrl ? (
                     <button
                       onClick={() => {
-                        console.log('🎵 Opening audio player for script:', script.title);
-                        // Load the script in the editor with audio player mode
-                        setGeneratedScript({
-                          id: script.id,
-                          title: script.title,
-                          lines: script.lines,
-                          metadata: script.metadata,
+                        console.log('🎵 Playing audio via global mini-player:', script.title);
+                        // Normalize field names from Supabase (speaker_name → speaker, text_content → text)
+                        const normalizedLines = (script.lines || []).map(line => ({
+                          id: line.id,
+                          speaker: line.speaker || line.speaker_name || 'Narrator',
+                          text: line.text || line.text_content || '',
+                          type: line.type || line.line_type || 'dialogue'
+                        }));
+                        handlePlayAudio({
                           audioUrl: script.audioUrl,
-                          audioDuration: script.audioDuration,
-                          autoPlayAudio: true
+                          title: script.title,
+                          scriptLines: normalizedLines,
+                          timingMetadata: null
                         });
-                        setShowScriptEditor(true);
-                        setActiveTab('create');
                       }}
                       className="flex-1 sm:flex-none px-4 py-2.5 sm:py-2 bg-success hover:bg-success/80 text-white rounded-xl transition-all flex items-center justify-center gap-2 font-display font-semibold text-sm active:scale-[0.97]"
                       title={`Play Audio (${script.audioDuration ? Math.round(script.audioDuration) + 's' : 'duration unknown'})`}
@@ -394,42 +610,9 @@ const AuthenticatedApp = () => {
   );
 
   /* ─────────────────────────────────────────────
-     Account Screen
+     Account / Settings Screen
      ───────────────────────────────────────────── */
-  const renderAccountScreen = () => (
-    <div className="min-h-full px-6 py-8 animate-fade-in">
-      <div className="text-center mb-8">
-        <h1 className="text-3xl md:text-4xl font-display font-bold mb-3 gradient-text">Account</h1>
-        <p className="text-sleep-500 text-lg font-body">Manage your Dreamstation experience</p>
-      </div>
-
-      <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-6 mb-6 shadow-card">
-        <h2 className="text-xl font-display font-semibold mb-4 text-sleep-900">Profile</h2>
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-display font-semibold text-sleep-500">Email</label>
-            <div className="mt-1 text-sm text-sleep-900 font-body">{user?.email}</div>
-          </div>
-          <div>
-            <label className="block text-sm font-display font-semibold text-sleep-500">User ID</label>
-            <div className="mt-1 text-sm text-sleep-400 font-mono">{user?.id}</div>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-6 shadow-card">
-        <h2 className="text-xl font-display font-semibold mb-4 text-sleep-900">Settings</h2>
-        <div className="space-y-4">
-          <button
-            onClick={signOut}
-            className="w-full px-4 py-3 bg-danger hover:bg-danger/80 text-white rounded-2xl transition-all font-display font-bold text-sm active:scale-[0.98]"
-          >
-            Sign Out
-          </button>
-        </div>
-      </div>
-    </div>
-  );
+  const renderAccountScreen = () => <SettingsScreen />;
 
   /* ─────────────────────────────────────────────
      Main Layout
@@ -455,7 +638,7 @@ const AuthenticatedApp = () => {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 pb-24 relative z-10">
+      <main className={`flex-1 relative z-10 ${globalAudio ? 'pb-40' : 'pb-24'}`}>
         {activeTab === 'create' && renderCreateScreen()}
         {activeTab === 'buddy' && (
           <div className="h-[calc(100vh-56px-80px)] overflow-y-auto">
@@ -468,6 +651,54 @@ const AuthenticatedApp = () => {
         {activeTab === 'library' && renderLibraryScreen()}
         {activeTab === 'account' && renderAccountScreen()}
       </main>
+
+      {/* Morning Reflection Popup */}
+      {showMorningPopup && morningReaction && (
+        <MorningReflectionPopup
+          reactionRecord={morningReaction}
+          childName={pendingChildName}
+          onComplete={() => {
+            setShowMorningPopup(false);
+            setMorningReaction(null);
+          }}
+        />
+      )}
+
+      {/* Push Permission Prompt — shown after onboarding */}
+      {showPushPrompt && activeChildId && (
+        <PushPermissionPrompt
+          userId={user?.id}
+          childId={activeChildId}
+          childName={pendingChildName}
+          onComplete={() => setShowPushPrompt(false)}
+        />
+      )}
+
+      {/* Shared audio element — lives here so it persists across expand/collapse */}
+      <audio ref={globalAudioRef} preload="metadata" style={{ display: 'none' }} />
+
+      {/* ── Global Mini Player (Spotify-style) ── */}
+      {globalAudio && !showExpandedPlayer && (
+        <div className="fixed left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-cream-300/50 z-50" style={{ bottom: '68px' }}>
+          <MiniPlayer
+            audioRef={globalAudioRef}
+            title={globalAudio.title}
+            onClose={handleCloseAudio}
+            onExpand={() => setShowExpandedPlayer(true)}
+          />
+        </div>
+      )}
+
+      {/* ── Expanded Player Modal ── */}
+      {showExpandedPlayer && globalAudio && (
+        <ExpandedPlayer
+          audioRef={globalAudioRef}
+          title={globalAudio.title}
+          scriptLines={globalAudio.scriptLines || []}
+          timingMetadata={globalAudio.timingMetadata || null}
+          onCollapse={() => setShowExpandedPlayer(false)}
+        />
+      )}
 
       {/* ── Bottom Navigation ── */}
       <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-cream-300/50 px-4 py-3 z-50">

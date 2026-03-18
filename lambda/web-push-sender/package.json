@@ -1,0 +1,12 @@
+{
+  "name": "dreamstation-web-push-sender",
+  "version": "1.0.0",
+  "description": "AWS Lambda function to send Web Push notifications for DreamStation",
+  "main": "index.mjs",
+  "scripts": {
+    "zip": "zip -r function.zip index.mjs node_modules package.json package-lock.json"
+  },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}
