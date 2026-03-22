@@ -1,0 +1,140 @@
+{
+  "name": "DreamStation — Morning Reflection",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "7am Daily",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 7 * * *" }]
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "name": "Get Active Children",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/child_profiles",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHloeGViY29zeWp5YWZ6c3NzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDAyOTMyNSwiZXhwIjoyMDg1NjA1MzI1fQ.jXeyWib0H0D5JEbSS5m_h9XI82MWI_shpj0r1DfxnGk" },
+          { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHloeGViY29zeWp5YWZ6c3NzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDAyOTMyNSwiZXhwIjoyMDg1NjA1MzI1fQ.jXeyWib0H0D5JEbSS5m_h9XI82MWI_shpj0r1DfxnGk" }
+        ]},
+        "sendQuery": true,
+        "queryParameters": { "parameters": [
+          { "name": "mode", "value": "eq.full_programme" },
+          { "name": "onboarding_completed", "value": "eq.true" },
+          { "name": "select", "value": "id,user_id,name,age,gender_pronoun,personality_description,neuro_profile,neuro_flags,interests,family_structure,parent_context" }
+        ]}
+      }
+    },
+    {
+      "id": "n3",
+      "name": "For Each Child",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [440, 300],
+      "parameters": { "batchSize": 1, "options": {} }
+    },
+    {
+      "id": "n4",
+      "name": "Fetch Session Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300],
+      "parameters": {
+        "jsCode": "const httpRequest = async (opts) => { const r = await fetch(opts.url, { method: opts.method || 'GET', headers: opts.headers, body: opts.body }); const t = await r.text(); try { return JSON.parse(t); } catch(e) { return t; } };\nconst child = $input.item.json;\nconst headers = { 'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHloeGViY29zeWp5YWZ6c3NzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDAyOTMyNSwiZXhwIjoyMDg1NjA1MzI1fQ.jXeyWib0H0D5JEbSS5m_h9XI82MWI_shpj0r1DfxnGk', 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHloeGViY29zeWp5YWZ6c3NzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDAyOTMyNSwiZXhwIjoyMDg1NjA1MzI1fQ.jXeyWib0H0D5JEbSS5m_h9XI82MWI_shpj0r1DfxnGk' };\nconst now = new Date();\nconst todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());\nconst yesterdayStart = new Date(todayStart.getTime() - 86400000);\nlet lastSession = null, history = [], dynamicContext = {}, pushSubscription = null;\n\ntry {\n  const sessions = await httpRequest({ method: 'GET', url: `https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/story_sessions?child_id=eq.${child.id}&created_at=gte.${yesterdayStart.toISOString()}&created_at=lt.${todayStart.toISOString()}&order=created_at.desc&limit=1&select=*`, headers });\n  lastSession = Array.isArray(sessions) && sessions.length > 0 ? sessions[0] : null;\n} catch(e) { console.log('Session fetch error:', e.message); }\n\nif (!lastSession) {\n  return [{ json: { session_found: false, child } }];\n}\n\ntry {\n  const h = await httpRequest({ method: 'GET', url: `https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/story_sessions?child_id=eq.${child.id}&created_at=lt.${yesterdayStart.toISOString()}&order=created_at.desc&limit=6&select=id,night_type,story_prompt,source_story_title,themes,parent_note,created_at`, headers });\n  history = Array.isArray(h) ? h.reverse() : [];\n} catch(e) { console.log('History fetch error:', e.message); }\n\ntry {\n  const ctx = await httpRequest({ method: 'GET', url: `https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/child_dynamic_context?child_id=eq.${child.id}&limit=1&select=*`, headers });\n  dynamicContext = Array.isArray(ctx) && ctx.length > 0 ? ctx[0] : {};\n} catch(e) { console.log('Dynamic context fetch error:', e.message); }\n\ntry {\n  const prefs = await httpRequest({ method: 'GET', url: `https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/notification_preferences?user_id=eq.${child.user_id}&child_id=eq.${child.id}&limit=1&select=push_subscription`, headers });\n  pushSubscription = Array.isArray(prefs) && prefs.length > 0 ? prefs[0].push_subscription : null;\n} catch(e) { console.log('Prefs fetch error:', e.message); }\n\nreturn [{ json: { session_found: true, lastSession, history, dynamicContext, pushSubscription, child } }];"
+      }
+    },
+    {
+      "id": "n5",
+      "name": "Session Found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [880, 300],
+      "parameters": {
+        "conditions": {
+          "options": { "caseSensitive": true, "leftValue": "", "typeValidation": "strict" },
+          "conditions": [{ "id": "c1", "leftValue": "={{ $json.session_found }}", "rightValue": true, "operator": { "type": "boolean", "operation": "equal" } }],
+          "combinator": "and"
+        }
+      }
+    },
+    {
+      "id": "n6",
+      "name": "No Session",
+      "type": "n8n-nodes-base.noOp",
+      "typeVersion": 1,
+      "position": [1100, 500],
+      "parameters": {}
+    },
+    {
+      "id": "n7",
+      "name": "Build Claude Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 100],
+      "parameters": {
+        "jsCode": "const { lastSession: session, history, dynamicContext: ctx, pushSubscription, child } = $input.item.json;\nconst isPlayback = session.night_type === 'playback';\n\nconst historyText = history.length > 0\n  ? history.map(s => {\n      const d = new Date(s.created_at).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });\n      return s.night_type === 'playback'\n        ? `${d}: PLAYBACK — \"${s.source_story_title || 'Unknown'}\"`\n        : `${d}: CO-CREATION — prompt: \"${s.story_prompt || 'none'}\", themes: ${(s.themes || []).join(', ') || 'none'}`;\n    }).join('\\n')\n  : 'No prior history — this is among the first nights of use.';\n\nconst nightContext = isPlayback\n  ? `NIGHT TYPE: Comfort playback\\nReplayed story: \"${session.source_story_title || 'Unknown'}\"\\nTimes played in last 14 days: ${session.playback_count_14d ?? 'Unknown'}\\nParent note: ${session.parent_note || 'None'}`\n  : `NIGHT TYPE: Co-creation\\nStory prompt (child's words): ${session.story_prompt || 'None'}\\nParent note: ${session.parent_note || 'None'}\\nThemes generated: ${(session.themes || []).join(', ') || 'Not tagged'}\\nVillain appeared: ${session.villain_appeared ?? 'Unknown'}`;\n\nconst allies = (ctx.characters || []).filter(c => c.name).map(c => `${c.name} (${c.role || 'ally'})`).join(', ') || 'None noted';\nconst hasEnoughHistory = history.length >= 4;\n\nconst systemPrompt = `You are a warm, perceptive child development observer helping parents notice what is happening in their child's emotional world through bedtime stories.\\n\\nGenerate exactly three observations for the parent to react to. Each must be a different type:\\n- THEME: A theme or topic from last night, especially if it connects to the child's known fears or stressors\\n- PATTERN: Something appearing across multiple nights in the recent history. Only use this type if 4+ nights of history exist — if not, generate a second THEME observation instead\\n- LANGUAGE: A specific word, phrase, image, or character choice the child made that is worth a parent noticing\\n\\nQUALITY STANDARD: Before including any observation ask — would this parent have noticed and named this themselves without the app? If yes, replace it with something more specific. Generic observations must not be surfaced.\\n\\nTONE: Warm, plain language. Observational not diagnostic. Curious not alarming. Never clinical. Never suggest a condition or problem. The parent is the expert on their child — you are pointing at something worth noticing. Maximum 2 sentences per observation.\\n\\n${isPlayback ? 'PLAYBACK NIGHT RULE: Do not observe story content. Reflect on the return itself — what returning to this specific story might signal. A repeated return in a neurodivergent child often signals a need for predictability, regulation, or emotional safety.' : ''}\\n\\nReturn valid JSON only — no preamble, no markdown fences:\\n{\\n  \"observations\": [\\n    { \"type\": \"THEME\", \"text\": \"one specific sentence, parent-readable\" },\\n    { \"type\": \"${hasEnoughHistory ? 'PATTERN' : 'THEME'}\", \"text\": \"one specific sentence, parent-readable\" },\\n    { \"type\": \"LANGUAGE\", \"text\": \"one specific sentence, parent-readable\" }\\n  ]\\n}`;\n\nconst userPrompt = `CHILD PROFILE:\\nName: ${child.name}, Age: ${child.age}${child.gender_pronoun ? `, Pronouns: ${child.gender_pronoun}` : ''}\\nPersonality: ${child.personality_description || 'Not provided'}\\nNeuro profile: ${child.neuro_profile || 'Not specified'}\\nNeuro flags: ${(child.neuro_flags || []).join(', ') || 'None'}\\nInterests: ${(child.interests || []).join(', ') || 'Not specified'}\\nFamily context: ${child.family_structure || 'Not provided'}\\n\\nCONTEXT:\\nFear flags: ${(ctx.fear_flags || []).join(', ') || 'None noted'}\\nStanding fears: ${ctx.standing_fears || 'None noted'}\\nCurrent stressors: ${ctx.current_stressors || 'None noted'}\\nAllies and characters: ${allies}\\n\\nLAST NIGHT:\\n${nightContext}\\n\\nRECENT HISTORY (oldest first, ${history.length} nights):\\n${historyText}\\n\\nGenerate three observations now.`;\n\nreturn [{ json: {\n  systemPrompt,\n  userPrompt,\n  child_id: child.id,\n  user_id: child.user_id,\n  session_id: session.id,\n  night_type: session.night_type,\n  pushSubscription,\n  childName: child.name,\n  storyPrompt: session.story_prompt,\n  sourceStoryTitle: session.source_story_title\n} }];"
+      }
+    },
+    {
+      "id": "n8",
+      "name": "Call Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 100],
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "x-api-key", "value": "={{ $vars.ANTHROPIC_API_KEY }}" },
+          { "name": "anthropic-version", "value": "2023-06-01" },
+          { "name": "Content-Type", "value": "application/json" }
+        ]},
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'claude-3-5-haiku-20241022', max_tokens: 600, system: $json.systemPrompt, messages: [{ role: 'user', content: $json.userPrompt }] }) }}"
+      }
+    },
+    {
+      "id": "n9",
+      "name": "Parse Save Notify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1540, 100],
+      "parameters": {
+        "jsCode": "const httpRequest = async (opts) => { const r = await fetch(opts.url, { method: opts.method || 'GET', headers: opts.headers, body: opts.body }); const t = await r.text(); try { return JSON.parse(t); } catch(e) { return t; } };\nconst claudeResponse = $input.item.json;\nconst prev = $('Build Claude Prompt').item.json;\n\nlet observations = [];\ntry {\n  const text = claudeResponse.content?.[0]?.text || '';\n  const cleaned = text.replace(/```json\\s*/g, '').replace(/```\\s*$/g, '').trim();\n  const parsed = JSON.parse(cleaned);\n  observations = parsed.observations || [];\n} catch(e) {\n  throw new Error('Failed to parse Claude observations: ' + e.message);\n}\n\nif (observations.length !== 3) {\n  throw new Error(`Expected 3 observations, got ${observations.length}`);\n}\n\nconst headers = {\n  'apikey': 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHloeGViY29zeWp5YWZ6c3NzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDAyOTMyNSwiZXhwIjoyMDg1NjA1MzI1fQ.jXeyWib0H0D5JEbSS5m_h9XI82MWI_shpj0r1DfxnGk',\n  'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHloeGViY29zeWp5YWZ6c3NzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDAyOTMyNSwiZXhwIjoyMDg1NjA1MzI1fQ.jXeyWib0H0D5JEbSS5m_h9XI82MWI_shpj0r1DfxnGk',\n  'Content-Type': 'application/json',\n  'Prefer': 'return=minimal'\n};\n\nawait httpRequest({\n  method: 'POST',\n  url: `https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/morning_reactions`,\n  headers,\n  body: JSON.stringify({\n    child_id: prev.child_id,\n    user_id: prev.user_id,\n    session_id: prev.session_id,\n    night_type: prev.night_type,\n    observations: observations,\n    reactions: [],\n    skipped: false,\n    generated_at: new Date().toISOString()\n  })\n});\n\nlet notifBody;\nif (prev.night_type === 'playback') {\n  notifBody = `${prev.childName} chose a comfort story last night — we noticed something worth seeing.`;\n} else if (prev.storyPrompt) {\n  const summary = prev.storyPrompt.length > 45 ? prev.storyPrompt.substring(0, 45) + '...' : prev.storyPrompt;\n  notifBody = `${prev.childName} wanted \"${summary}\" — we noticed something. Tap to see.`;\n} else {\n  notifBody = `Three things worth noticing from ${prev.childName}'s night. Tap to see.`;\n}\n\nif (prev.pushSubscription) {\n  await httpRequest({\n    method: 'POST',\n    url: $vars.PUSH_LAMBDA_URL,\n    headers: { 'Content-Type': 'application/json' },\n    body: JSON.stringify({\n      subscription: prev.pushSubscription,\n      payload: {\n        title: 'DreamStation ✨',\n        body: notifBody,\n        tag: 'morning-reflection',\n        data: { type: 'morning_reflection', session_id: prev.session_id }\n      }\n    })\n  }).catch(e => console.log('Push failed (non-fatal):', e.message));\n}\n\nreturn [{ json: { done: true, child_id: prev.child_id } }];"
+      }
+    }
+  ],
+  "connections": {
+    "7am Daily":          { "main": [[{ "node": "Get Active Children",   "type": "main", "index": 0 }]] },
+    "Get Active Children":{ "main": [[{ "node": "For Each Child",        "type": "main", "index": 0 }]] },
+    "For Each Child":     { "main": [[], [{ "node": "Fetch Session Data",    "type": "main", "index": 0 }]] },
+    "Fetch Session Data": { "main": [[{ "node": "Session Found?",        "type": "main", "index": 0 }]] },
+    "Session Found?":     { "main": [
+      [{ "node": "Build Claude Prompt", "type": "main", "index": 0 }],
+      [{ "node": "No Session",          "type": "main", "index": 0 }]
+    ]},
+    "No Session":         { "main": [[{ "node": "For Each Child", "type": "main", "index": 0 }]] },
+    "Build Claude Prompt":{ "main": [[{ "node": "Call Claude",    "type": "main", "index": 0 }]] },
+    "Call Claude":        { "main": [[{ "node": "Parse Save Notify", "type": "main", "index": 0 }]] },
+    "Parse Save Notify":  { "main": [[{ "node": "For Each Child", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "dreamstation-morning-reflection-v2",
+  "meta": {
+    "notes": "Required env vars: SUPABASE_URL, SUPABASE_SERVICE_KEY (service role), ANTHROPIC_API_KEY, PUSH_LAMBDA_URL. Requires tables: child_profiles, story_sessions, child_dynamic_context, notification_preferences, morning_reactions. Cron fires 7am UTC daily."
+  }
+}

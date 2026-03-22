@@ -13,7 +13,7 @@
  *   SLEEP  → SleepScreen  (locked dark screen)
  */
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     ClipboardCheck,
@@ -31,6 +31,8 @@ import {
 import { useSleepFlow, PHASES } from '../hooks/useSleepFlow';
 import { PhaseHeader, SleepProgressBar } from './shared';
 import { Creature } from './creature';
+import { useAuth } from '../contexts/AuthContext';
+import { db } from '../lib/supabase';
 
 /* ─────────────────────────────────────────────
    Phase transition animation
@@ -245,6 +247,7 @@ function SeedScreen({
     seedLoading,
     seedError,
     seedSubmitted,
+    childProfiles,
 }) {
     const themes = [
         'Space adventure',
@@ -279,14 +282,30 @@ function SeedScreen({
 
             {!seedSubmitted ? (
                 <>
-                    {/* Child name */}
-                    <input
-                        type="text"
-                        placeholder="Child's name"
-                        value={seedInput.childName}
-                        onChange={(e) => setSeedInput({ childName: e.target.value })}
-                        className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/60 rounded-2xl px-4 py-3 text-sm text-sleep-900 placeholder-sleep-400 outline-none focus:border-dream-glow/50 transition-all"
-                    />
+                    {/* Child selector */}
+                    {childProfiles && childProfiles.length > 0 ? (
+                        <select
+                            value={seedInput.childId || ''}
+                            onChange={(e) => {
+                                const selected = childProfiles.find((c) => c.id === e.target.value);
+                                if (selected) setSeedInput({ childId: selected.id, childName: selected.name });
+                            }}
+                            className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/60 rounded-2xl px-4 py-3 text-sm text-sleep-900 outline-none focus:border-dream-glow/50 transition-all"
+                        >
+                            <option value="" disabled>Who's the story for?</option>
+                            {childProfiles.map((c) => (
+                                <option key={c.id} value={c.id}>{c.name}</option>
+                            ))}
+                        </select>
+                    ) : (
+                        <input
+                            type="text"
+                            placeholder="Child's name"
+                            value={seedInput.childName}
+                            onChange={(e) => setSeedInput({ childName: e.target.value })}
+                            className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/60 rounded-2xl px-4 py-3 text-sm text-sleep-900 placeholder-sleep-400 outline-none focus:border-dream-glow/50 transition-all"
+                        />
+                    )}
 
                     {/* Theme picker */}
                     <div>
@@ -315,7 +334,16 @@ function SeedScreen({
                         placeholder="Any extras? (e.g. 'include a friendly robot')"
                         value={seedInput.extras}
                         onChange={(e) => setSeedInput({ extras: e.target.value })}
-                        rows={3}
+                        rows={2}
+                        className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/60 rounded-2xl px-4 py-3 text-sm text-sleep-900 placeholder-sleep-400 outline-none resize-none focus:border-dream-glow/50 transition-all"
+                    />
+
+                    {/* Parent note */}
+                    <textarea
+                        placeholder="Anything on their mind tonight? (optional — just for you)"
+                        value={seedInput.parentNote}
+                        onChange={(e) => setSeedInput({ parentNote: e.target.value })}
+                        rows={2}
                         className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/60 rounded-2xl px-4 py-3 text-sm text-sleep-900 placeholder-sleep-400 outline-none resize-none focus:border-dream-glow/50 transition-all"
                     />
 
@@ -325,7 +353,7 @@ function SeedScreen({
 
                     <motion.button
                         onClick={handleSend}
-                        disabled={seedLoading || !seedInput.theme}
+                        disabled={seedLoading || !seedInput.theme || (!seedInput.childId && !seedInput.childName)}
                         className={`w-full py-3.5 rounded-2xl font-display font-bold text-sm transition-all ${
                             seedLoading || !seedInput.theme
                                 ? 'bg-cream-300/50 text-sleep-400 cursor-not-allowed'
@@ -508,6 +536,34 @@ function SleepScreen({ resetFlow }) {
    ═════════════════════════════════════════════ */
 export default function DreamstationApp() {
     const flow = useSleepFlow();
+    const { user } = useAuth();
+    const [childProfiles, setChildProfiles] = useState([]);
+    const sessionInsertedRef = useRef(false);
+
+    useEffect(() => {
+        if (!user?.id) return;
+        db.getChildProfiles(user.id)
+            .then(setChildProfiles)
+            .catch((err) => console.error('Failed to load child profiles:', err));
+    }, [user?.id]);
+
+    useEffect(() => {
+        if (!flow.seedSubmitted || sessionInsertedRef.current) return;
+        if (!user?.id || !flow.seedInput.childId) return;
+        sessionInsertedRef.current = true;
+        const prompt = [
+            flow.seedInput.theme,
+            flow.seedInput.extras,
+        ].filter(Boolean).join(' — ');
+        db.createStorySession({
+            child_id: flow.seedInput.childId,
+            user_id: user.id,
+            night_type: 'co_creation',
+            is_comfort_story: false,
+            story_prompt: prompt || null,
+            parent_note: flow.seedInput.parentNote || null,
+        }).catch((err) => console.error('Failed to create co-creation session:', err));
+    }, [flow.seedSubmitted]); // eslint-disable-line react-hooks/exhaustive-deps
 
     const {
         currentPhase,
@@ -557,6 +613,7 @@ export default function DreamstationApp() {
                         seedLoading={flow.seedLoading}
                         seedError={flow.seedError}
                         seedSubmitted={flow.seedSubmitted}
+                        childProfiles={childProfiles}
                     />
                 );
             case PHASES.STORY:

@@ -1,0 +1,120 @@
+{
+  "name": "DreamStation — Weekly Brief v2",
+  "nodes": [
+    {
+      "id": "n1",
+      "name": "Sunday 8pm",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [0, 300],
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 20 * * 0" }]
+        }
+      }
+    },
+    {
+      "id": "n2",
+      "name": "Get Active Children",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [220, 300],
+      "parameters": {
+        "method": "GET",
+        "url": "https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/child_profiles",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "apikey", "value": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHloeGViY29zeWp5YWZ6c3NzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDAyOTMyNSwiZXhwIjoyMDg1NjA1MzI1fQ.jXeyWib0H0D5JEbSS5m_h9XI82MWI_shpj0r1DfxnGk" },
+          { "name": "Authorization", "value": "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHloeGViY29zeWp5YWZ6c3NzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDAyOTMyNSwiZXhwIjoyMDg1NjA1MzI1fQ.jXeyWib0H0D5JEbSS5m_h9XI82MWI_shpj0r1DfxnGk" }
+        ]},
+        "sendQuery": true,
+        "queryParameters": { "parameters": [
+          { "name": "mode", "value": "eq.full_programme" },
+          { "name": "onboarding_completed", "value": "eq.true" },
+          { "name": "select", "value": "id,user_id,name,age,gender_pronoun,personality_description,neuro_profile,neuro_flags,interests,family_structure,parent_context" }
+        ]}
+      }
+    },
+    {
+      "id": "n3",
+      "name": "For Each Child",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [440, 300],
+      "parameters": { "batchSize": 1, "options": {} }
+    },
+    {
+      "id": "n4",
+      "name": "Fetch Week Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 300],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const child = $input.item.json;\nconst SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHloeGViY29zeWp5YWZ6c3NzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDAyOTMyNSwiZXhwIjoyMDg1NjA1MzI1fQ.jXeyWib0H0D5JEbSS5m_h9XI82MWI_shpj0r1DfxnGk';\nconst headers = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY };\nconst SB = 'https://jmdyhxebcosyjyafzsss.supabase.co';\nconst now = new Date();\nconst todayUTC = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));\nconst sevenDaysAgo = new Date(todayUTC.getTime() - 7 * 86400000);\nlet sessions = [], reactions = [], dynamicContext = {}, previousBrief = null, pushSubscription = null;\ntry {\n  sessions = await this.helpers.httpRequest({ method: 'GET', url: SB + '/rest/v1/story_sessions?child_id=eq.' + child.id + '&created_at=gte.' + sevenDaysAgo.toISOString() + '&created_at=lt.' + todayUTC.toISOString() + '&order=created_at.asc&select=*', headers }) || [];\n} catch(e) { console.log('Sessions error:', e.message); }\nif (!Array.isArray(sessions) || sessions.length < 3) {\n  return { has_minimum_sessions: false, session_count: Array.isArray(sessions) ? sessions.length : 0, child };\n}\ntry {\n  reactions = await this.helpers.httpRequest({ method: 'GET', url: SB + '/rest/v1/morning_reactions?child_id=eq.' + child.id + '&generated_at=gte.' + sevenDaysAgo.toISOString() + '&select=observations,reactions,night_type,skipped,generated_at', headers }) || [];\n} catch(e) { console.log('Reactions error:', e.message); }\ntry {\n  const ctx = await this.helpers.httpRequest({ method: 'GET', url: SB + '/rest/v1/child_dynamic_context?child_id=eq.' + child.id + '&limit=1&select=*', headers });\n  dynamicContext = Array.isArray(ctx) && ctx.length > 0 ? ctx[0] : {};\n} catch(e) {}\ntry {\n  const briefs = await this.helpers.httpRequest({ method: 'GET', url: SB + '/rest/v1/weekly_briefs?child_id=eq.' + child.id + '&order=created_at.desc&limit=1&select=brief_text,week_start', headers });\n  previousBrief = Array.isArray(briefs) && briefs.length > 0 ? briefs[0] : null;\n} catch(e) {}\ntry {\n  const prefs = await this.helpers.httpRequest({ method: 'GET', url: SB + '/rest/v1/notification_preferences?user_id=eq.' + child.user_id + '&child_id=eq.' + child.id + '&limit=1&select=push_subscription', headers });\n  pushSubscription = Array.isArray(prefs) && prefs.length > 0 ? prefs[0].push_subscription : null;\n} catch(e) {}\nreturn { has_minimum_sessions: true, sessions, reactions, dynamicContext, previousBrief, pushSubscription, child, week_start: sevenDaysAgo.toISOString() };"
+      }
+    },
+    {
+      "id": "n5",
+      "name": "Build Brief Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 300],
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "if (!$input.item.json.has_minimum_sessions) { return { skipped: true }; }\nconst { sessions, reactions, dynamicContext: ctx, previousBrief, pushSubscription, child, week_start } = $input.item.json;\nconst coCount = sessions.filter(s => s.night_type === 'co_creation').length;\nconst pbCount = sessions.filter(s => s.night_type === 'playback').length;\nconst total = sessions.length;\nconst sessionLines = sessions.map(s => {\n  const d = new Date(s.created_at).toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short' });\n  return s.night_type === 'playback'\n    ? '- ' + d + ' | PLAYBACK | Story: \"' + (s.source_story_title || 'Unknown') + '\" | Played ' + (s.playback_count_14d != null ? s.playback_count_14d : '?') + 'x in 14 days | Note: ' + (s.parent_note || 'None')\n    : '- ' + d + ' | CO-CREATION | Prompt: \"' + (s.story_prompt || 'None') + '\" | Themes: ' + ((s.themes || []).join(', ') || 'None') + ' | Note: ' + (s.parent_note || 'None');\n}).join('\\n');\nconst reactionSummary = reactions.length > 0\n  ? reactions.map(r => {\n      if (r.skipped) return '- [SKIPPED]';\n      const lines = (r.observations || []).map((o, i) => {\n        const rxn = (r.reactions || [])[i];\n        const label = rxn === 'noticed' ? 'Noticed' : rxn === 'unsure' ? 'Not sure' : rxn === 'didnt_see' ? 'Didnt see' : 'no reaction';\n        return '  ' + o.type + ': \"' + o.text + '\" -> ' + label;\n      }).join('\\n');\n      return '[' + r.night_type + ']\\n' + lines;\n    }).join('\\n')\n  : 'No morning reactions this week.';\nconst allies = (ctx.characters || []).filter(c => c.name).map(c => c.name + ' (' + (c.role || 'ally') + ')').join(', ') || 'None noted';\nconst systemPrompt = 'You are a compassionate child development observer writing a weekly brief for a parent. Plain language, warm, non-alarmist. Never clinical, never diagnostic.\\n\\nStructure your response with exactly these three labelled sections:\\n\\nHIGHLIGHTS\\n2-4 sentences. The most significant emotional or thematic story across this weeks sessions. Must be specific to this child and this week.\\n\\nPATTERNS\\n2-4 sentences. Only name a pattern if at least two separate nights point in the same direction. If no genuine pattern exists write: Nothing clear enough to name this week. If the child had more playback nights than co-creation nights, name that explicitly.\\n\\nWHAT TO WATCH\\n2 sentences. One specific forward-looking lens for the parent. Not a task — something to notice.\\n\\nMaximum 200 words total. Weight observations that received parent Noticed this reactions more heavily. Do not repeat last weeks brief unless there is clear continuation.';\nconst userPrompt = 'CHILD: ' + child.name + ', age ' + child.age + (child.gender_pronoun ? ', pronouns: ' + child.gender_pronoun : '') + '.\\nPersonality: ' + (child.personality_description || 'Not provided') + '.\\nNeuro profile: ' + (child.neuro_profile || 'Not specified') + '. Flags: ' + ((child.neuro_flags || []).join(', ') || 'None') + '.\\nInterests: ' + ((child.interests || []).join(', ') || 'Not specified') + '.\\nFamily: ' + (child.family_structure || 'Not provided') + '.\\nFear landscape: ' + ((ctx.fear_flags || []).join(', ') || 'None noted') + '.\\nCurrent stressors: ' + (ctx.current_stressors || 'None noted') + '.\\nAllies: ' + allies + '.\\n\\nSESSIONS THIS WEEK (' + total + ' total, ' + coCount + ' co-creation, ' + pbCount + ' playback):\\n' + sessionLines + '\\n\\nMORNING REACTIONS THIS WEEK:\\n' + reactionSummary + '\\n\\nLAST WEEKS BRIEF:\\n' + (previousBrief ? 'Week of ' + previousBrief.week_start + ': ' + previousBrief.brief_text : 'No previous brief — this is the first week.') + '\\n\\nWrite the weekly brief now.';\nreturn { systemPrompt, userPrompt, child_id: child.id, user_id: child.user_id, child_name: child.name, week_start: week_start.split('T')[0], total_nights: total, co_creation_nights: coCount, playback_nights: pbCount, pushSubscription };"
+      }
+    },
+    {
+      "id": "n6",
+      "name": "Call Claude",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 300],
+      "continueOnFail": true,
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "authentication": "none",
+        "sendHeaders": true,
+        "headerParameters": { "parameters": [
+          { "name": "x-api-key", "value": "={{ $vars.ANTHROPIC_API_KEY }}" },
+          { "name": "anthropic-version", "value": "2023-06-01" },
+          { "name": "Content-Type", "value": "application/json" }
+        ]},
+        "sendBody": true,
+        "contentType": "raw",
+        "rawContentType": "application/json",
+        "body": "={{ JSON.stringify({ model: 'claude-sonnet-4-20250514', max_tokens: 600, system: $json.systemPrompt, messages: [{ role: 'user', content: $json.userPrompt }] }) }}"
+      }
+    },
+    {
+      "id": "n7",
+      "name": "Save Notify",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 300],
+      "continueOnFail": true,
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "if ($input.item.json.skipped) { return { skipped: true }; }\nconst claudeResponse = $input.item.json;\nconst prev = $('Build Brief Prompt').item.json;\nconst briefText = claudeResponse.content && claudeResponse.content[0] ? claudeResponse.content[0].text : '';\nif (!briefText) { return { error: 'Claude returned empty brief' }; }\nconst SB_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptZHloeGViY29zeWp5YWZ6c3NzIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MDAyOTMyNSwiZXhwIjoyMDg1NjA1MzI1fQ.jXeyWib0H0D5JEbSS5m_h9XI82MWI_shpj0r1DfxnGk';\nconst headers = { 'apikey': SB_KEY, 'Authorization': 'Bearer ' + SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' };\nawait this.helpers.httpRequest({ method: 'POST', url: 'https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/weekly_briefs', headers, body: JSON.stringify({ child_id: prev.child_id, user_id: prev.user_id, brief_content: { text: briefText, co_creation_nights: prev.co_creation_nights, playback_nights: prev.playback_nights }, brief_text: briefText, week_start_date: prev.week_start, week_end_date: new Date().toISOString().split('T')[0], week_start: prev.week_start, session_count: prev.total_nights, total_nights: prev.total_nights, co_creation_nights: prev.co_creation_nights, playback_nights: prev.playback_nights, status: 'delivered', delivered_at: new Date().toISOString() }) });\nif (prev.pushSubscription) {\n  try {\n    await this.helpers.httpRequest({ method: 'POST', url: $vars.PUSH_LAMBDA_URL, headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ subscription: prev.pushSubscription, payload: { title: prev.child_name + \"'s weekly brief is ready\", body: \"This week's bedtime patterns — tap to read.\", tag: 'weekly-brief', data: { type: 'weekly_brief', child_id: prev.child_id } } }) });\n  } catch(e) { console.log('Push failed:', e.message); }\n}\nreturn { done: true, child_id: prev.child_id };"
+      }
+    }
+  ],
+  "connections": {
+    "Sunday 8pm":         { "main": [[{ "node": "Get Active Children", "type": "main", "index": 0 }]] },
+    "Get Active Children":{ "main": [[{ "node": "For Each Child",      "type": "main", "index": 0 }]] },
+    "For Each Child":     { "main": [[{ "node": "Fetch Week Data", "type": "main", "index": 0 }], []] },
+    "Fetch Week Data":    { "main": [[{ "node": "Build Brief Prompt",  "type": "main", "index": 0 }]] },
+    "Build Brief Prompt": { "main": [[{ "node": "Call Claude",         "type": "main", "index": 0 }]] },
+    "Call Claude":        { "main": [[{ "node": "Save Notify",         "type": "main", "index": 0 }]] },
+    "Save Notify":        { "main": [[{ "node": "For Each Child",      "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "id": "dreamstation-weekly-brief-v2",
+  "meta": {
+    "notes": "Rebuilt with all n8n Cloud learnings. Uses this.helpers.httpRequest (not fetch), Run Once for Each Item on all Code nodes, no IF node (early return + guard + Continue on Error), hardcoded Supabase URL + key, UTC dates, claude-sonnet-4-20250514. Minimum 3 sessions required. Cron: Sundays 8pm UTC."
+  }
+}

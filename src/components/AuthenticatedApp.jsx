@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { Search, BookOpen, Library, User, Plus, Edit, Play, Trash2, PawPrint, Moon } from 'lucide-react';
+import { BookOpen, Library, User, Plus, Edit, Play, Trash2, PawPrint, Moon, Moon as MoonIcon } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ScriptEditorScreen from './ScriptEditorScreen';
 import OptimizedCreateScreen from './OptimizedCreateScreen';
@@ -7,6 +7,7 @@ import BuddyTimerApp from '../features/buddy-timer/BuddyTimerApp';
 import { loadSavedScripts, loadScript, deleteScript } from '../services/scriptSaveService';
 import { generateAIScript } from '../services/aiScriptGenerationService';
 import { autoAssignVoices } from '../services/cartesiaVoiceService';
+import { db } from '../lib/supabase';
 
 const AuthenticatedApp = () => {
   const { user, signOut } = useAuth();
@@ -19,6 +20,24 @@ const AuthenticatedApp = () => {
   const [shouldRefreshLibrary, setShouldRefreshLibrary] = useState(false);
   const [deleteConfirmation, setDeleteConfirmation] = useState(null);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  // Play Tonight modal state
+  const [playTonightScript, setPlayTonightScript] = useState(null);
+  const [childProfiles, setChildProfiles] = useState([]);
+  const [playTonightChildId, setPlayTonightChildId] = useState('');
+  const [playTonightNote, setPlayTonightNote] = useState('');
+  const [playTonightLoading, setPlayTonightLoading] = useState(false);
+
+  // Load child profiles once
+  useEffect(() => {
+    if (!user?.id) return;
+    db.getChildProfiles(user.id)
+      .then((profiles) => {
+        setChildProfiles(profiles);
+        if (profiles.length === 1) setPlayTonightChildId(profiles[0].id);
+      })
+      .catch((err) => console.error('Failed to load child profiles:', err));
+  }, [user?.id]);
 
   // Define loadUserScripts function before useEffect
   const loadUserScripts = useCallback(async () => {
@@ -104,6 +123,50 @@ const AuthenticatedApp = () => {
 
   const cancelDelete = () => {
     setDeleteConfirmation(null);
+  };
+
+  const handlePlayTonight = (script) => {
+    setPlayTonightScript(script);
+    setPlayTonightNote('');
+    if (childProfiles.length === 1) setPlayTonightChildId(childProfiles[0].id);
+  };
+
+  const confirmPlayTonight = async () => {
+    if (!playTonightScript || !playTonightChildId) return;
+    setPlayTonightLoading(true);
+    try {
+      const storyId = playTonightScript.story_id || null;
+      const count = await db.getPlaybackCount14d(storyId, playTonightChildId);
+      await db.createStorySession({
+        child_id: playTonightChildId,
+        user_id: user.id,
+        night_type: 'playback',
+        is_comfort_story: true,
+        source_story_id: storyId,
+        source_story_title: playTonightScript.title,
+        story_prompt: null,
+        parent_note: playTonightNote.trim() || null,
+        playback_count_14d: count,
+      });
+      setPlayTonightScript(null);
+      setPlayTonightNote('');
+      setGeneratedScript({
+        id: playTonightScript.id,
+        title: playTonightScript.title,
+        lines: playTonightScript.lines,
+        metadata: playTonightScript.metadata,
+        audioUrl: playTonightScript.audioUrl,
+        audioDuration: playTonightScript.audioDuration,
+        autoPlayAudio: true,
+      });
+      setShowScriptEditor(true);
+      setActiveTab('create');
+    } catch (err) {
+      console.error('Failed to start playback session:', err);
+      alert('Could not start session. Please try again.');
+    } finally {
+      setPlayTonightLoading(false);
+    }
   };
 
   /* ─────────────────────────────────────────────
@@ -317,30 +380,37 @@ const AuthenticatedApp = () => {
                     <span className="truncate">Edit</span>
                   </button>
 
-                  {/* Show Play Audio button if script has audio, otherwise show TTS button */}
+                  {/* Show Play Audio / Play Tonight buttons if script has audio */}
                   {script.hasAudio && script.audioUrl ? (
-                    <button
-                      onClick={() => {
-                        console.log('🎵 Opening audio player for script:', script.title);
-                        // Load the script in the editor with audio player mode
-                        setGeneratedScript({
-                          id: script.id,
-                          title: script.title,
-                          lines: script.lines,
-                          metadata: script.metadata,
-                          audioUrl: script.audioUrl,
-                          audioDuration: script.audioDuration,
-                          autoPlayAudio: true
-                        });
-                        setShowScriptEditor(true);
-                        setActiveTab('create');
-                      }}
-                      className="flex-1 sm:flex-none px-4 py-2.5 sm:py-2 bg-success hover:bg-success/80 text-white rounded-xl transition-all flex items-center justify-center gap-2 font-display font-semibold text-sm active:scale-[0.97]"
-                      title={`Play Audio (${script.audioDuration ? Math.round(script.audioDuration) + 's' : 'duration unknown'})`}
-                    >
-                      <Play className="w-4 h-4 shrink-0" />
-                      <span className="truncate">Play</span>
-                    </button>
+                    <>
+                      <button
+                        onClick={() => handlePlayTonight(script)}
+                        className="flex-1 sm:flex-none px-4 py-2.5 sm:py-2 bg-dream-glow hover:bg-dream-aurora text-white rounded-xl transition-all flex items-center justify-center gap-2 font-display font-semibold text-sm active:scale-[0.97]"
+                        title="Play as tonight's bedtime story"
+                      >
+                        <MoonIcon className="w-4 h-4 shrink-0" />
+                        <span className="truncate">Tonight</span>
+                      </button>
+                      <button
+                        onClick={() => {
+                          setGeneratedScript({
+                            id: script.id,
+                            title: script.title,
+                            lines: script.lines,
+                            metadata: script.metadata,
+                            audioUrl: script.audioUrl,
+                            audioDuration: script.audioDuration,
+                            autoPlayAudio: true,
+                          });
+                          setShowScriptEditor(true);
+                          setActiveTab('create');
+                        }}
+                        className="flex-none px-3 py-2.5 sm:py-2 bg-success/80 hover:bg-success text-white rounded-xl transition-all flex items-center justify-center font-display font-semibold text-sm active:scale-[0.97]"
+                        title={`Preview audio (${script.audioDuration ? Math.round(script.audioDuration) + 's' : ''})`}
+                      >
+                        <Play className="w-4 h-4" />
+                      </button>
+                    </>
                   ) : (
                     <button
                       onClick={() => alert('TTS generation coming soon!')}
@@ -361,6 +431,69 @@ const AuthenticatedApp = () => {
                 </div>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Play Tonight Modal */}
+      {playTonightScript && (
+        <div className="fixed inset-0 bg-sleep-950/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0">
+          <div className="bg-white/95 backdrop-blur-lg border-2 border-cream-300/50 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-dream">
+            <div className="flex items-center gap-2 mb-1">
+              <Moon className="w-4 h-4 text-dream-glow" />
+              <h3 className="text-lg font-display font-bold text-sleep-900">Play Tonight</h3>
+            </div>
+            <p className="text-sm text-sleep-500 mb-4 font-body line-clamp-1">{playTonightScript.title}</p>
+
+            {childProfiles.length > 1 && (
+              <div className="mb-4">
+                <label className="block text-xs font-display font-semibold text-sleep-500 mb-1">Which child?</label>
+                <select
+                  value={playTonightChildId}
+                  onChange={(e) => setPlayTonightChildId(e.target.value)}
+                  className="w-full bg-white border-2 border-cream-300/60 rounded-2xl px-4 py-2.5 text-sm text-sleep-900 outline-none focus:border-dream-glow/50 transition-all"
+                >
+                  <option value="" disabled>Select a child</option>
+                  {childProfiles.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            <div className="mb-5">
+              <label className="block text-xs font-display font-semibold text-sleep-500 mb-1">Anything on their mind tonight? <span className="font-normal">(optional)</span></label>
+              <textarea
+                value={playTonightNote}
+                onChange={(e) => setPlayTonightNote(e.target.value)}
+                placeholder="A note just for you — mood, big day, anything unusual…"
+                rows={3}
+                className="w-full bg-white border-2 border-cream-300/60 rounded-2xl px-4 py-3 text-sm text-sleep-900 placeholder-sleep-400 outline-none resize-none focus:border-dream-glow/50 transition-all font-body"
+              />
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => { setPlayTonightScript(null); setPlayTonightNote(''); }}
+                className="flex-1 py-3 bg-cream-200 hover:bg-cream-300 text-sleep-700 rounded-xl font-display font-semibold text-sm transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={confirmPlayTonight}
+                disabled={playTonightLoading || !playTonightChildId}
+                className="flex-1 py-3 bg-dream-glow hover:bg-dream-aurora text-white rounded-xl font-display font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+              >
+                {playTonightLoading ? (
+                  <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Moon className="w-4 h-4" />
+                    Start Story
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         </div>
       )}

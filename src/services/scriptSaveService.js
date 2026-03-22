@@ -178,6 +178,7 @@ export const loadSavedScripts = async (userId) => {
       
       return {
         id: script.id,
+        story_id: script.story_id || null,
         title: script.title,
         user_id: script.user_id,
         status: script.status,

@@ -24,7 +24,9 @@ export const tables = {
   script_lines: 'script_lines',
   episodes: 'episodes',
   credit_transactions: 'credit_transactions',
-  audio_previews: 'audio_previews'
+  audio_previews: 'audio_previews',
+  child_profiles: 'child_profiles',
+  story_sessions: 'story_sessions'
 }
 
 // Helper functions for common database operations
@@ -232,6 +234,44 @@ export const db = {
     
     if (error) throw error
     return data
+  },
+
+  // Child profile operations
+  async getChildProfiles(userId) {
+    const { data, error } = await supabase
+      .from(tables.child_profiles)
+      .select('id, name, age, mode, neuro_profile')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: true })
+    
+    if (error) throw error
+    return data
+  },
+
+  // Story session operations
+  async createStorySession(sessionData) {
+    const { data, error } = await supabase
+      .from(tables.story_sessions)
+      .insert([sessionData])
+      .select()
+      .single()
+    
+    if (error) throw error
+    return data
+  },
+
+  async getPlaybackCount14d(sourceStoryId, childId) {
+    const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
+    const { count, error } = await supabase
+      .from(tables.story_sessions)
+      .select('id', { count: 'exact', head: true })
+      .eq('source_story_id', sourceStoryId)
+      .eq('child_id', childId)
+      .eq('night_type', 'playback')
+      .gte('created_at', since)
+    
+    if (error) throw error
+    return count ?? 0
   }
 }
 

@@ -97,8 +97,10 @@ export const useSleepFlowStore = create(
         /* ── SEED data (n8n input) ── */
         seedInput: {
             childName: '',
+            childId: null,       // uuid from child_profiles.id
             theme: '',           // e.g. 'space adventure', 'underwater'
             extras: '',          // free-text extras for the story
+            parentNote: '',      // optional parent observation for session record
         },
         seedSubmitted: false,
         seedLoading: false,
@@ -305,7 +307,7 @@ export const useSleepFlowStore = create(
                 creatureId: null,
                 parentCalmLevel: 0.5,
 
-                seedInput: { childName: '', theme: '', extras: '' },
+                seedInput: { childName: '', childId: null, theme: '', extras: '', parentNote: '' },
                 seedSubmitted: false,
                 seedLoading: false,
                 seedError: null,
@@ -442,6 +444,8 @@ export function useSleepFlow() {
 
         // ── SEED data ──
         seedInput: store.seedInput,
+        childId: store.seedInput.childId,
+        parentNote: store.seedInput.parentNote,
         seedSubmitted: store.seedSubmitted,
         seedLoading: store.seedLoading,
         seedError: store.seedError,
