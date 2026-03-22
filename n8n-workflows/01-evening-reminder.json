@@ -1,0 +1,110 @@
+{
+  "name": "DreamStation Evening Reminder",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 1 }]
+        }
+      },
+      "id": "ev-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst h = String(now.getUTCHours()).padStart(2, '0');\nconst m = String(now.getUTCMinutes()).padStart(2, '0');\nconst checkTime = `${h}:${m}:00`;\n\n// Only run between 17:00 and 21:00 UTC\nconst hour = now.getUTCHours();\nif (hour < 17 || hour > 21) {\n  console.log('Outside evening window, skipping');\n  return [];\n}\n\nconsole.log('Checking for evening reminders at:', checkTime);\nreturn [{ json: { checkTime } }];"
+      },
+      "id": "ev-time",
+      "name": "Check Time Window",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/notification_preferences?evening_reminder_time=eq.{{ $json.checkTime }}&push_subscription=not.is.null&select=*,child_profiles!inner(id,name,mode,user_id)",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "ev-fetch-prefs",
+      "name": "Fetch Matching Preferences",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.first().json;\n\n// Handle both array response and single-item\nconst prefs = Array.isArray(items) ? items : [items];\n\nif (!prefs || prefs.length === 0 || !prefs[0].id) {\n  console.log('No matching preferences found');\n  return [];\n}\n\nconsole.log(`Found ${prefs.length} matching preference(s)`);\n\nreturn prefs.map(p => ({ json: p }));"
+      },
+      "id": "ev-split",
+      "name": "Split Preferences",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/story_sessions?child_id=eq.{{ $json.child_id }}&order=created_at.desc&limit=1",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "ev-fetch-session",
+      "name": "Fetch Recent Session",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const pref = $('Split Preferences').item.json;\nconst sessions = $input.first().json;\nconst recentSession = Array.isArray(sessions) && sessions.length > 0 ? sessions[0] : null;\n\nconst childName = pref.child_profiles?.name || 'your child';\nconst subscription = pref.push_subscription;\n\nif (!subscription || !subscription.endpoint) {\n  console.log('No valid push subscription for child:', childName);\n  return [];\n}\n\nlet body;\n\nif (recentSession) {\n  const sessionDate = new Date(recentSession.created_at);\n  const hoursSince = (Date.now() - sessionDate.getTime()) / (1000 * 60 * 60);\n\n  if (hoursSince < 48 && recentSession.story_prompt) {\n    const summary = recentSession.story_prompt.length > 50\n      ? recentSession.story_prompt.substring(0, 50) + '...'\n      : recentSession.story_prompt;\n    body = `Time for tonight's story — last night ${childName} wanted \"${summary}\". What's on their mind tonight?`;\n  } else {\n    body = `Time to create tonight's story for ${childName} ✨`;\n  }\n} else {\n  body = `Time to create tonight's story for ${childName} ✨`;\n}\n\nconsole.log('Sending evening reminder to:', childName);\n\nreturn [{\n  json: {\n    subscription: subscription,\n    payload: {\n      title: 'DreamStation',\n      body: body,\n      tag: 'evening-reminder',\n      url: '/?tab=create'\n    }\n  }\n}];"
+      },
+      "id": "ev-build-notif",
+      "name": "Build Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1100, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://9puilg0pdg.execute-api.eu-west-1.amazonaws.com/default/web-push-sender",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ subscription: $json.subscription, payload: $json.payload }) }}",
+        "options": {}
+      },
+      "id": "ev-send-push",
+      "name": "Send Push via Lambda",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1320, 0]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": { "main": [[{ "node": "Check Time Window", "type": "main", "index": 0 }]] },
+    "Check Time Window": { "main": [[{ "node": "Fetch Matching Preferences", "type": "main", "index": 0 }]] },
+    "Fetch Matching Preferences": { "main": [[{ "node": "Split Preferences", "type": "main", "index": 0 }]] },
+    "Split Preferences": { "main": [[{ "node": "Fetch Recent Session", "type": "main", "index": 0 }]] },
+    "Fetch Recent Session": { "main": [[{ "node": "Build Notification", "type": "main", "index": 0 }]] },
+    "Build Notification": { "main": [[{ "node": "Send Push via Lambda", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "instanceId": "907ab9bfe98db377a72a66df1b347ab59bf71d9112c7983facef6dbf9c6f87d3"
+  },
+  "tags": []
+}

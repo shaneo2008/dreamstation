@@ -1,0 +1,258 @@
+{
+  "name": "DreamStation Weekly Brief",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "minutes", "minutesInterval": 1 }]
+        }
+      },
+      "id": "wb-trigger",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst days = ['sunday', 'monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday'];\nconst currentDay = days[now.getUTCDay()];\nconst h = String(now.getUTCHours()).padStart(2, '0');\nconst m = String(now.getUTCMinutes()).padStart(2, '0');\nconst currentTime = `${h}:${m}:00`;\n\n// Brief generation runs 2 hours before delivery\n// We match on weekly_brief_day = today AND calculate if now is ~2hrs before weekly_brief_time\nconsole.log('Weekly brief check:', currentDay, currentTime);\n\nreturn [{ json: { currentDay, currentTime } }];"
+      },
+      "id": "wb-time",
+      "name": "Check Day and Time",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/notification_preferences?weekly_brief_day=eq.{{ $json.currentDay }}&push_subscription=not.is.null&select=*,child_profiles!inner(id,name,mode,user_id,personality_description,neuro_flags,age)",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "wb-fetch-prefs",
+      "name": "Fetch Matching Preferences",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.first().json;\nconst prefs = Array.isArray(items) ? items : [items];\n\nif (!prefs || prefs.length === 0 || !prefs[0].id) return [];\n\n// Filter Full Programme + check if ~2hrs before their brief time\nconst currentTime = $('Check Day and Time').first().json.currentTime;\n\nconst matching = prefs.filter(p => {\n  if (p.child_profiles?.mode !== 'full_programme') return false;\n  // Check if current time is approximately 2hrs before their brief time\n  const briefTime = p.weekly_brief_time || '19:30:00';\n  const briefH = parseInt(briefTime.split(':')[0]);\n  const briefM = parseInt(briefTime.split(':')[1]);\n  const currentH = parseInt(currentTime.split(':')[0]);\n  const currentM = parseInt(currentTime.split(':')[1]);\n  const briefMinutes = briefH * 60 + briefM;\n  const currentMinutes = currentH * 60 + currentM;\n  const targetGenMinutes = briefMinutes - 120; // 2hrs before\n  return Math.abs(currentMinutes - targetGenMinutes) <= 1;\n});\n\nconsole.log(`Found ${matching.length} briefs to generate`);\nreturn matching.map(p => ({ json: p }));"
+      },
+      "id": "wb-filter",
+      "name": "Filter and Time Check",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const pref = $input.item.json;\nconst childId = pref.child_id;\nconst userId = pref.user_id;\nconst profile = pref.child_profiles;\nconst supabaseUrl = 'https://jmdyhxebcosyjyafzsss.supabase.co';\n\n// Calculate week range (Monday to Sunday)\nconst now = new Date();\nconst dayOfWeek = now.getUTCDay();\nconst mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;\nconst weekStart = new Date(now);\nweekStart.setUTCDate(now.getUTCDate() + mondayOffset);\nweekStart.setUTCHours(0, 0, 0, 0);\nconst weekEnd = new Date(weekStart);\nweekEnd.setUTCDate(weekStart.getUTCDate() + 6);\nweekEnd.setUTCHours(23, 59, 59, 999);\n\nreturn [{\n  json: {\n    childId,\n    userId,\n    profile,\n    subscription: pref.push_subscription,\n    weekStartDate: weekStart.toISOString().split('T')[0],\n    weekEndDate: weekEnd.toISOString().split('T')[0],\n    weekStartISO: weekStart.toISOString(),\n    weekEndISO: weekEnd.toISOString()\n  }\n}];"
+      },
+      "id": "wb-dates",
+      "name": "Calculate Week Range",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [880, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/story_sessions?child_id=eq.{{ $json.childId }}&created_at=gte.{{ $json.weekStartISO }}&created_at=lte.{{ $json.weekEndISO }}&order=created_at.asc",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "wb-sessions",
+      "name": "Fetch Week Sessions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1100, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const sessionsRaw = $input.first().json;\nconst sessions = Array.isArray(sessionsRaw) ? sessionsRaw : [];\n\nif (sessions.length < 3) {\n  console.log(`Only ${sessions.length} sessions this week (need 3+), skipping brief`);\n  return [];\n}\n\nconsole.log(`${sessions.length} sessions this week — generating brief`);\nreturn [{ json: { sessions, sessionCount: sessions.length } }];"
+      },
+      "id": "wb-min-check",
+      "name": "Check Minimum Sessions",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1320, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/morning_reactions?child_id=eq.{{ $('Calculate Week Range').first().json.childId }}&generated_at=gte.{{ $('Calculate Week Range').first().json.weekStartISO }}&generated_at=lte.{{ $('Calculate Week Range').first().json.weekEndISO }}&order=generated_at.asc",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "wb-reactions",
+      "name": "Fetch Week Reactions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/weekly_briefs?child_id=eq.{{ $('Calculate Week Range').first().json.childId }}&order=week_start_date.desc&limit=1",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "wb-prev-brief",
+      "name": "Fetch Previous Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 200],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/child_dynamic_context?child_id=eq.{{ $('Calculate Week Range').first().json.childId }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "wb-context",
+      "name": "Fetch Dynamic Context",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1540, 400],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const weekData = $('Calculate Week Range').first().json;\nconst profile = weekData.profile;\nconst sessions = $('Check Minimum Sessions').first().json.sessions;\nconst sessionCount = $('Check Minimum Sessions').first().json.sessionCount;\nconst reactionsRaw = $('Fetch Week Reactions').first().json;\nconst reactions = Array.isArray(reactionsRaw) ? reactionsRaw : [];\nconst prevBriefRaw = $('Fetch Previous Brief').first().json;\nconst prevBriefs = Array.isArray(prevBriefRaw) ? prevBriefRaw : [];\nconst prevBrief = prevBriefs.length > 0 ? prevBriefs[0] : null;\nconst ctxRaw = $('Fetch Dynamic Context').first().json;\nconst ctx = Array.isArray(ctxRaw) ? ctxRaw[0] || {} : ctxRaw || {};\n\nconst systemPrompt = `You are a warm, perceptive child development observer helping a parent understand what has been happening in their child's emotional world this week through their bedtime stories.\n\nBRIEF STRUCTURE — three sections, plain language, warm tone:\n\n1. WHAT WE NOTICED THIS WEEK (2-3 sentences)\n   Summary of the dominant emotional themes across the week.\n   Reference specific story moments where powerful. Not a list of nights.\n\n2. PATTERNS (1-2 sentences, only if a genuine pattern exists)\n   Something that appeared across multiple nights that is worth naming.\n   If no clear pattern exists, return null for this field.\n   Do not manufacture patterns from thin data.\n\n3. WHAT TO NOTICE THIS WEEK (2-3 sentences)\n   Forward-looking. Specific. Actionable.\n   Based on what emerged this week, what should the parent pay attention to?\n\nBRIEF RULES:\n- Never clinical. Never diagnostic. Observe and reflect only.\n- Never mention the app, the study, or therapeutic frameworks.\n- Reference specific story content and characters where it adds meaning.\n- If parent reactions show 'didnt_see', weight that theme lower.\n- If parent reactions show consistent 'noticed', validate and build on those themes.\n- Reference previous week's brief only to note progress, not to repeat.\n- Maximum 200 words total across all three sections.\n- Plain language a tired parent can read in 90 seconds.\n\nOUTPUT FORMAT — return valid JSON only:\n{\n  \"summary\": \"...\",\n  \"patterns\": \"...\" or null,\n  \"week_ahead\": \"...\"\n}`;\n\nconst sessionsText = sessions.map((s, i) =>\n  `Night ${i + 1} (${new Date(s.created_at).toLocaleDateString()}): mode=${s.mode || 'co-creation'}, prompt=\"${s.story_prompt || 'none'}\", themes=${(s.themes || []).join(',') || 'none'}, villain=${s.villain_appeared ?? 'unknown'}`\n).join('\\n');\n\nconst reactionsText = reactions.length > 0\n  ? reactions.map(r => {\n      const obs = r.observations || [];\n      const reacts = r.reactions || [];\n      return obs.map((o, i) =>\n        `- [${o.type}] \"${o.text}\" → reaction: ${reacts[i]?.reaction || 'no reaction'}`\n      ).join('\\n');\n    }).join('\\n')\n  : 'No morning reaction data yet (Week 1)';\n\nconst userPrompt = `CHILD PROFILE:\nName: ${profile.name}, Age: ${profile.age}\nPersonality: ${profile.personality_description || 'Not provided'}\nNeuro flags: ${(profile.neuro_flags || []).join(', ') || 'None'}\nFear flags: ${(ctx.fear_flags || []).join(', ') || 'None'}\nCurrent stressors: ${ctx.current_stressors || 'None noted'}\n\nTHIS WEEK'S SESSIONS (${sessionCount} nights):\n${sessionsText}\n\nTHIS WEEK'S MORNING REACTIONS:\n${reactionsText}\n\nPREVIOUS WEEK'S BRIEF SUMMARY: ${prevBrief?.brief_content?.summary || 'First week'}\n\nGenerate the weekly brief now.`;\n\n// Check stressor freshness\nconst stressorsUpdated = ctx.stressors_updated_at ? new Date(ctx.stressors_updated_at) : null;\nconst stressorsStale = stressorsUpdated ? (Date.now() - stressorsUpdated.getTime()) > (14 * 24 * 60 * 60 * 1000) : false;\n\nreturn [{\n  json: {\n    claudePayload: {\n      model: 'claude-sonnet-4-6-20250514',\n      max_tokens: 1024,\n      system: systemPrompt,\n      messages: [{ role: 'user', content: userPrompt }]\n    },\n    childId: weekData.childId,\n    userId: weekData.userId,\n    childName: profile.name,\n    subscription: weekData.subscription,\n    weekStartDate: weekData.weekStartDate,\n    weekEndDate: weekData.weekEndDate,\n    sessionCount,\n    stressorsStale\n  }\n}];"
+      },
+      "id": "wb-build-prompt",
+      "name": "Build Claude Prompt",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1760, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "x-api-key", "value": "YOUR_CLAUDE_API_KEY_HERE" },
+            { "name": "anthropic-version", "value": "2023-06-01" },
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.claudePayload) }}",
+        "options": {}
+      },
+      "id": "wb-claude",
+      "name": "Call Claude API",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [1980, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "const response = $input.first().json;\nlet content = response.content?.[0]?.text || '';\nconst cleaned = content.replace(/```json\\s*/g, '').replace(/```\\s*$/g, '').trim();\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  throw new Error(`Failed to parse brief: ${e.message}. Content: ${cleaned.substring(0, 300)}`);\n}\n\nif (!parsed.summary || !parsed.week_ahead) {\n  throw new Error('Brief missing required sections');\n}\n\nconst data = $('Build Claude Prompt').first().json;\n\n// Append stressor refresh note if stale\nlet briefContent = {\n  summary: parsed.summary,\n  patterns: parsed.patterns || null,\n  week_ahead: parsed.week_ahead,\n  generated_at: new Date().toISOString()\n};\n\nif (data.stressorsStale) {\n  briefContent.stressor_refresh_note = \"It's been a couple of weeks since you updated what's going on in their life. Worth a quick check in Settings if anything has changed.\";\n}\n\nconsole.log('Brief generated for:', data.childName);\n\nreturn [{ json: { briefContent } }];"
+      },
+      "id": "wb-parse",
+      "name": "Parse Brief Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2200, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/weekly_briefs",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" },
+            { "name": "Prefer", "value": "return=representation" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ child_id: $('Build Claude Prompt').first().json.childId, user_id: $('Build Claude Prompt').first().json.userId, week_start_date: $('Build Claude Prompt').first().json.weekStartDate, week_end_date: $('Build Claude Prompt').first().json.weekEndDate, brief_content: $json.briefContent, session_count: $('Build Claude Prompt').first().json.sessionCount }) }}",
+        "options": {}
+      },
+      "id": "wb-insert",
+      "name": "Insert Weekly Brief",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2420, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const data = $('Build Claude Prompt').first().json;\n\nreturn [{\n  json: {\n    subscription: data.subscription,\n    payload: {\n      title: 'DreamStation',\n      body: `Your weekly reflection for ${data.childName} is ready.`,\n      tag: 'weekly-brief',\n      url: '/?tab=account&section=briefs'\n    }\n  }\n}];"
+      },
+      "id": "wb-notif",
+      "name": "Build Brief Notification",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [2640, 0]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://9puilg0pdg.execute-api.eu-west-1.amazonaws.com/default/web-push-sender",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ subscription: $json.subscription, payload: $json.payload }) }}",
+        "options": {}
+      },
+      "id": "wb-send",
+      "name": "Send Push via Lambda",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [2860, 0]
+    }
+  ],
+  "connections": {
+    "Schedule Trigger": { "main": [[{ "node": "Check Day and Time", "type": "main", "index": 0 }]] },
+    "Check Day and Time": { "main": [[{ "node": "Fetch Matching Preferences", "type": "main", "index": 0 }]] },
+    "Fetch Matching Preferences": { "main": [[{ "node": "Filter and Time Check", "type": "main", "index": 0 }]] },
+    "Filter and Time Check": { "main": [[{ "node": "Calculate Week Range", "type": "main", "index": 0 }]] },
+    "Calculate Week Range": { "main": [[{ "node": "Fetch Week Sessions", "type": "main", "index": 0 }]] },
+    "Fetch Week Sessions": { "main": [[{ "node": "Check Minimum Sessions", "type": "main", "index": 0 }]] },
+    "Check Minimum Sessions": { "main": [[{ "node": "Fetch Week Reactions", "type": "main", "index": 0 }, { "node": "Fetch Previous Brief", "type": "main", "index": 0 }, { "node": "Fetch Dynamic Context", "type": "main", "index": 0 }]] },
+    "Fetch Week Reactions": { "main": [[{ "node": "Build Claude Prompt", "type": "main", "index": 0 }]] },
+    "Build Claude Prompt": { "main": [[{ "node": "Call Claude API", "type": "main", "index": 0 }]] },
+    "Call Claude API": { "main": [[{ "node": "Parse Brief Response", "type": "main", "index": 0 }]] },
+    "Parse Brief Response": { "main": [[{ "node": "Insert Weekly Brief", "type": "main", "index": 0 }]] },
+    "Insert Weekly Brief": { "main": [[{ "node": "Build Brief Notification", "type": "main", "index": 0 }]] },
+    "Build Brief Notification": { "main": [[{ "node": "Send Push via Lambda", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "instanceId": "907ab9bfe98db377a72a66df1b347ab59bf71d9112c7983facef6dbf9c6f87d3"
+  },
+  "tags": []
+}

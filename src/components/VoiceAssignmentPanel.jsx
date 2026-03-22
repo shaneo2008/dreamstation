@@ -417,10 +417,7 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
 
     return (
       <div className="mt-4 p-4 bg-cream-100/60 border-2 border-cream-300/40 rounded-2xl">
-        <h4 className="font-display font-bold text-sm mb-2 text-sleep-900">Preview: {selectedCharacter}</h4>
-        <p className="text-xs text-sleep-500 mb-3 font-body italic leading-relaxed">
-          "{scriptLines.find(line => line.speaker === selectedCharacter)?.text || 'No sample text available'}"
-        </p>
+        <h4 className="font-display font-bold text-sm mb-3 text-sleep-900">Preview: {selectedCharacter}</h4>
         {voiceAssignments[selectedCharacter] && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2">

@@ -1,0 +1,92 @@
+{
+  "name": "DreamStation Midday Skip Check",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [{ "field": "cronExpression", "expression": "0 12 * * *" }]
+        }
+      },
+      "id": "skip-trigger",
+      "name": "Noon Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [0, 0]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Calculate today at noon and today at midnight (start of day)\nconst now = new Date();\nconst todayStart = new Date(now);\ntodayStart.setUTCHours(0, 0, 0, 0);\nconst todayNoon = new Date(now);\ntodayNoon.setUTCHours(12, 0, 0, 0);\n\nconsole.log('Checking for unreacted morning reactions before:', todayNoon.toISOString());\n\nreturn [{\n  json: {\n    todayStart: todayStart.toISOString(),\n    todayNoon: todayNoon.toISOString()\n  }\n}];"
+      },
+      "id": "skip-dates",
+      "name": "Calculate Cutoff",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [220, 0]
+    },
+    {
+      "parameters": {
+        "method": "GET",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/morning_reactions?reacted_at=is.null&skipped=eq.false&generated_at=gte.{{ $json.todayStart }}&generated_at=lt.{{ $json.todayNoon }}&select=id",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "options": {}
+      },
+      "id": "skip-fetch",
+      "name": "Fetch Unreacted",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [440, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const items = $input.first().json;\nconst reactions = Array.isArray(items) ? items : [];\n\nif (reactions.length === 0) {\n  console.log('No unreacted morning reactions to mark as skipped');\n  return [];\n}\n\nconsole.log(`Marking ${reactions.length} morning reaction(s) as skipped`);\n\nreturn reactions.map(r => ({ json: { id: r.id } }));"
+      },
+      "id": "skip-split",
+      "name": "Split Into Items",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [660, 0]
+    },
+    {
+      "parameters": {
+        "method": "PATCH",
+        "url": "=https://jmdyhxebcosyjyafzsss.supabase.co/rest/v1/morning_reactions?id=eq.{{ $json.id }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "supabaseApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            { "name": "Content-Type", "value": "application/json" }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ skipped: true }) }}",
+        "options": {}
+      },
+      "id": "skip-update",
+      "name": "Mark Skipped",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [880, 0],
+      "credentials": {
+        "supabaseApi": { "id": "D8ivuhUEOHEw1Jwz", "name": "Supabase account 2" }
+      }
+    }
+  ],
+  "connections": {
+    "Noon Trigger": { "main": [[{ "node": "Calculate Cutoff", "type": "main", "index": 0 }]] },
+    "Calculate Cutoff": { "main": [[{ "node": "Fetch Unreacted", "type": "main", "index": 0 }]] },
+    "Fetch Unreacted": { "main": [[{ "node": "Split Into Items", "type": "main", "index": 0 }]] },
+    "Split Into Items": { "main": [[{ "node": "Mark Skipped", "type": "main", "index": 0 }]] }
+  },
+  "active": false,
+  "settings": { "executionOrder": "v1" },
+  "meta": {
+    "instanceId": "907ab9bfe98db377a72a66df1b347ab59bf71d9112c7983facef6dbf9c6f87d3"
+  },
+  "tags": []
+}

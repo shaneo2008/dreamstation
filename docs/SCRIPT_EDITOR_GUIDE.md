@@ -95,7 +95,7 @@ The bottom section provides generation controls and cost information:
 
 #### Cost Calculation
 - **Dynamic Pricing**: Real-time credit calculation
-- **Detailed Breakdown**: Based on script length and characters
+- **Detailed Breakdown**: Based on story length and characters
 - **Transparent Pricing**: "Cost: 13 Credits" with explanation
 
 #### Generation Controls
@@ -110,15 +110,15 @@ The bottom section provides generation controls and cost information:
 1. **Story Concept Entry**
    - Enter detailed story description
    - Include character information and setting details
-   - Rich details create better AI-generated scripts
+   - Rich details create better AI-generated stories
 
-2. **AI Script Generation**
+2. **AI Story Generation**
    - Professional loading animation with progress indicators
-   - Typically takes 3-5 seconds for script generation
-   - Automatic transition to Script Editor Interface
+   - Typically takes 3-5 seconds for story generation
+   - Automatic transition to Story Editor Interface
 
-3. **Script Refinement**
-   - Review AI-generated script lines
+3. **Story Refinement**
+   - Review AI-generated story lines
    - Edit text content for perfect dialogue and narration
    - Assign appropriate characters to dialogue lines
    - Add TTS annotations for emotional depth
@@ -129,13 +129,13 @@ The bottom section provides generation controls and cost information:
    - Ensure consistent character voices throughout
 
 5. **Final Review & Generation**
-   - Review complete script for quality and consistency
+   - Review complete story for quality and consistency
    - Verify cost calculation and duration estimate
    - Click "Generate Audio" for final production
 
 ### Best Practices
 
-#### Script Editing
+#### Story Editing
 - **Clear Character Distinction**: Ensure dialogue is clearly attributed
 - **Natural Language**: Edit for natural speech patterns
 - **Emotional Depth**: Use TTS annotations strategically for impact
@@ -154,9 +154,9 @@ The bottom section provides generation controls and cost information:
 
 ## Advanced Features
 
-### Script Line Types
+### Story Line Types
 
-The editor handles multiple script line types automatically:
+The editor handles multiple story line types automatically:
 
 - **Narration**: Scene descriptions, transitions, and exposition
 - **Dialogue**: Character speech with speaker attribution
@@ -168,11 +168,11 @@ The interface provides real-time feedback:
 
 - **Cost Calculation**: Updates automatically as you edit
 - **Character Count**: Tracks active characters for pricing
-- **Duration Estimates**: Adjusts based on script length
+- **Duration Estimates**: Adjusts based on story length
 
 ### Mobile Optimization
 
-The Script Editor is fully optimized for mobile devices:
+The Story Editor is fully optimized for mobile devices:
 
 - **Touch-friendly Controls**: Large buttons and touch targets
 - **Responsive Layout**: Adapts to screen size automatically
@@ -183,7 +183,7 @@ The Script Editor is fully optimized for mobile devices:
 
 ### Common Issues
 
-#### Script Not Loading
+#### Story Not Loading
 - Ensure story concept was entered before clicking "Generate Series"
 - Wait for loading animation to complete
 - Refresh page if loading stalls
@@ -212,7 +212,7 @@ The Script Editor is fully optimized for mobile devices:
 
 ## Integration Notes
 
-The Script Editor Interface is designed for seamless integration with:
+The Story Editor Interface is designed for seamless integration with:
 
 - **AI Voice Synthesis APIs**: Ready for backend TTS integration
 - **Audio Processing Systems**: Structured output for audio generation
@@ -221,15 +221,15 @@ The Script Editor Interface is designed for seamless integration with:
 
 ## Future Enhancements
 
-Planned improvements to the Script Editor Interface:
+Planned improvements to the Story Editor Interface:
 
 - **Real Audio Previews**: Actual TTS audio for individual lines
 - **Advanced Annotations**: Additional emotion types and voice effects
-- **Script Export**: Export scripts in various formats
+- **Story Export**: Export stories in various formats
 - **Collaboration Tools**: Multi-user editing and review features
-- **Version Control**: Script versioning and change tracking
+- **Version Control**: Story versioning and change tracking
 
 ---
 
-The Script Editor Interface represents the culmination of professional fanfiction audio creation tools, providing creators with unprecedented control over their audio drama production process.
+The Story Editor Interface represents the culmination of professional fanfiction audio creation tools, providing creators with unprecedented control over their audio drama production process.
 

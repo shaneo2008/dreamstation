@@ -526,7 +526,7 @@ const calculateCredits = (storyConfig) => {
 - Prominent gradient styling
 - Loading states during processing
 - Success/error feedback
-- Redirect to Script Editor upon completion
+- Redirect to Story Editor upon completion
 
 **Button States**:
 ```jsx
@@ -824,13 +824,13 @@ Primary navigation optimized for mobile thumb interaction.
 
 ## 🔮 Future Feature Specifications
 
-### Script Editor Interface (Planned)
+### Story Editor Interface (Planned)
 
 #### Purpose
-Line-by-line script editing with advanced TTS controls.
+Line-by-line story editing with advanced TTS controls.
 
 #### Core Features
-- **Line-by-Line Editing**: Individual text areas for each script line
+- **Line-by-Line Editing**: Individual text areas for each story line
 - **Character Voice Assignment**: Dropdown selectors for voice assignment
 - **TTS Annotations**: Emotion and tone markup for enhanced audio
 - **Real-Time Preview**: Audio preview for individual lines
@@ -900,15 +900,15 @@ Line-by-line script editing with advanced TTS controls.
 
 
 
-## 📝 Script Editor Interface
+## 📝 Story Editor Interface
 
 ### Purpose
-Professional line-by-line script editing interface with advanced TTS annotation capabilities and character voice management. This is the core differentiating feature that transforms FanCast AI from a basic content generator into a professional-grade audio creation platform.
+Professional line-by-line story editing interface with advanced TTS annotation capabilities and character voice management. This is the core differentiating feature that transforms FanCast AI from a basic content generator into a professional-grade audio creation platform.
 
 ### Access Requirements
 - **Creator Tier Only**: $5 per 30 minutes pricing model
 - **Triggered After**: Story concept entry and "Generate Series" action
-- **Loading State**: Professional "AI Crafting Your Script..." animation
+- **Loading State**: Professional "AI Crafting Your Story..." animation
 
 ### Interface Layout
 
@@ -916,8 +916,8 @@ Professional line-by-line script editing interface with advanced TTS annotation 
 **Components**:
 - **Back Button (←)**: Returns to Creator Studio
 - **Series Title**: Dynamic display (e.g., "The Quantum Detective - Episode 1")
-- **Save Button (💾)**: Saves current script progress
-- **More Options (⋯)**: Additional script management tools
+- **Save Button (💾)**: Saves current story progress
+- **More Options (⋯)**: Additional story management tools
 
 **Styling**:
 - Dark background with teal accent colors
@@ -938,10 +938,10 @@ Professional line-by-line script editing interface with advanced TTS annotation 
 - Consistent character voice tracking
 
 #### Main Editor Area
-**Script Line Structure**:
-Each script line contains:
+**Story Line Structure**:
+Each story line contains:
 - **Speaker Assignment Dropdown**: Character selection for dialogue
-- **Text Area**: Editable script content
+- **Text Area**: Editable story content
 - **Annotation Button (🎭)**: TTS emotion annotation trigger
 - **Preview Button (▶️)**: Individual line audio preview
 - **Remove Button (×)**: Delete annotation tags
@@ -972,10 +972,10 @@ Each script line contains:
 8. **😐 Neutral**: Standard, balanced delivery
 
 #### Annotation Modal
-**Trigger**: Click 🎭 button on any script line
+**Trigger**: Click 🎭 button on any story line
 **Layout**: 2-column grid of annotation options
 **Interaction**: Single-click selection with immediate application
-**Visual Feedback**: Colored annotation tags appear on script lines
+**Visual Feedback**: Colored annotation tags appear on story lines
 
 #### Annotation Management
 - **Add**: Single-click from modal interface
@@ -989,7 +989,7 @@ Each script line contains:
 **Dropdown Functionality**:
 - Available characters populated from story creation
 - Narrator automatically included for narration lines
-- Real-time updates across all script lines
+- Real-time updates across all story lines
 - Consistent voice assignment validation
 
 #### Voice Preview System
@@ -997,7 +997,7 @@ Each script line contains:
 **Functionality**: Simulated voice sample playback
 **Integration Ready**: Structured for TTS API integration
 
-### Script Line Types
+### Story Line Types
 
 #### Narration Lines
 **Characteristics**:
@@ -1022,7 +1022,7 @@ Each script line contains:
 
 #### Dynamic Cost Calculation
 **Factors**:
-- Script length (character count)
+- Story length (character count)
 - Number of unique characters
 - Episode duration estimate
 - Real-time updates during editing
@@ -1044,7 +1044,7 @@ Each script line contains:
 - Responsive layout adaptation
 
 #### Performance Considerations
-- Efficient rendering for long scripts
+- Efficient rendering for long stories
 - Smooth scrolling with large content
 - Optimized for mobile device capabilities
 - Battery-conscious interaction patterns
@@ -1052,7 +1052,7 @@ Each script line contains:
 ### Technical Implementation
 
 #### State Management
-**Script Data Structure**:
+**Story Data Structure**:
 ```javascript
 {
   id: "unique_script_id",
@@ -1090,7 +1090,7 @@ Each script line contains:
 - **ActionsBar**: Bottom actions and cost display
 
 #### Integration Points
-- **AI Script Generation**: Receives generated script data
+- **AI Story Generation**: Receives generated story data
 - **TTS API**: Structured for voice synthesis integration
 - **User Management**: Creator tier validation
 - **Analytics**: Usage tracking and performance metrics
@@ -1100,8 +1100,8 @@ Each script line contains:
 #### Complete Creation Process
 1. **Story Concept Entry** → Comprehensive storytelling options
 2. **Generate Series** → Professional loading state with progress
-3. **Script Editor Opens** → Line-by-line editing interface
-4. **Script Refinement** → Text editing and character assignment
+3. **Story Editor Opens** → Line-by-line editing interface
+4. **Story Refinement** → Text editing and character assignment
 5. **TTS Annotations** → Emotional depth and voice control
 6. **Final Review** → Cost verification and quality check
 7. **Audio Generation** → Final production workflow
@@ -1109,7 +1109,7 @@ Each script line contains:
 #### Best Practices Integration
 - **Strategic Annotation Usage**: Guidelines for effective TTS control
 - **Character Consistency**: Voice assignment validation
-- **Script Quality**: Natural language editing recommendations
+- **Story Quality**: Natural language editing recommendations
 - **Mobile Workflow**: Optimized mobile creation process
 
 ### Future Enhancements
@@ -1117,39 +1117,39 @@ Each script line contains:
 #### Planned Features
 - **Real Audio Previews**: Actual TTS audio for individual lines
 - **Advanced Annotations**: Additional emotion types and voice effects
-- **Script Export**: Export scripts in various formats (PDF, TXT, JSON)
+- **Story Export**: Export stories in various formats (PDF, TXT, JSON)
 - **Collaboration Tools**: Multi-user editing and review features
-- **Version Control**: Script versioning and change tracking
-- **Template System**: Pre-built script templates for common genres
+- **Version Control**: Story versioning and change tracking
+- **Template System**: Pre-built story templates for common genres
 
 #### Integration Roadmap
 - **Backend TTS Integration**: Real voice synthesis API connection
-- **User Authentication**: Account-based script saving and management
+- **User Authentication**: Account-based story saving and management
 - **Analytics Dashboard**: Creator performance and usage analytics
 - **Payment Processing**: Credit purchase and usage tracking
-- **Community Features**: Script sharing and collaboration tools
+- **Community Features**: Story sharing and collaboration tools
 
 ### Success Metrics
 
 #### User Engagement
-- **Script Completion Rate**: Percentage of scripts taken to audio generation
-- **Editing Session Duration**: Time spent in Script Editor Interface
+- **Story Completion Rate**: Percentage of stories taken to audio generation
+- **Editing Session Duration**: Time spent in Story Editor Interface
 - **Annotation Usage**: Frequency and type of TTS annotations applied
 - **Character Management**: Complexity of character voice assignments
 
 #### Technical Performance
-- **Loading Time**: Script Editor Interface load speed
+- **Loading Time**: Story Editor Interface load speed
 - **Responsiveness**: Real-time update performance
 - **Mobile Usage**: Mobile vs desktop usage patterns
-- **Error Rates**: Script editing and annotation error frequency
+- **Error Rates**: Story editing and annotation error frequency
 
 #### Business Impact
 - **Creator Tier Conversion**: Listener to Creator upgrade rate
-- **Revenue per Script**: Average revenue from script creation
+- **Revenue per Story**: Average revenue from story creation
 - **User Retention**: Creator tier subscription retention
-- **Feature Adoption**: Script Editor Interface usage rate
+- **Feature Adoption**: Story Editor Interface usage rate
 
 ---
 
-The Script Editor Interface represents the core value proposition of FanCast AI, providing professional-grade tools that justify premium pricing and create significant competitive advantages in the fanfiction audio creation market.
+The Story Editor Interface represents the core value proposition of FanCast AI, providing professional-grade tools that justify premium pricing and create significant competitive advantages in the fanfiction audio creation market.
 

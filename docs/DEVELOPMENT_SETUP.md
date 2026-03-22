@@ -1,6 +1,6 @@
-# FanCast AI - Development Setup Guide
+jc# FanCast AI - Development Setup Guide
 
-This guide provides comprehensive instructions for setting up the FanCast AI development environment, including the advanced Script Editor Interface, from initial installation to advanced development workflows.
+This guide provides comprehensive instructions for setting up the FanCast AI development environment, including the advanced Story Editor Interface, from initial installation to advanced development workflows.
 
 ## 📋 Prerequisites
 
