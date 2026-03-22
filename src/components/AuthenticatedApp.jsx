@@ -638,7 +638,7 @@ const AuthenticatedApp = () => {
               <textarea
                 value={playTonightNote}
                 onChange={(e) => setPlayTonightNote(e.target.value)}
-                placeholder="A note just for you \u2014 mood, big day, anything unusual\u2026"
+                placeholder="A note just for you — mood, big day, anything unusual…"
                 rows={3}
                 className="w-full bg-white border-2 border-cream-300/60 rounded-2xl px-4 py-3 text-sm text-sleep-900 placeholder-sleep-400 outline-none resize-none focus:border-dream-glow/50 transition-all font-body"
               />
