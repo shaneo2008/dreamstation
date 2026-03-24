@@ -92,7 +92,7 @@ export default function ActivePlayer() {
   const instructionText = `${currentTask?.title || ''}! ${characterName} is waiting...`;
 
   return (
-    <div className="min-h-screen flex flex-col items-center px-4 pt-3 pb-4 relative overflow-x-hidden">
+    <div className="h-full flex flex-col items-center px-4 pt-3 pb-4 relative overflow-x-hidden">
       {/* Task Progress Dots */}
       <div className="flex gap-2 mb-2 z-10">
         {tasks.map((task, i) => (

@@ -626,8 +626,8 @@ const AuthenticatedApp = () => {
 
       {/* Play Tonight Modal */}
       {playTonightScript && (
-        <div className="fixed inset-0 bg-sleep-950/40 backdrop-blur-sm flex items-end sm:items-center justify-center z-50 px-4 pb-4 sm:pb-0">
-          <div className="bg-white/95 backdrop-blur-lg border-2 border-cream-300/50 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-dream">
+        <div className="fixed inset-0 bg-sleep-950/40 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6">
+          <div className="bg-white/95 backdrop-blur-lg border-2 border-cream-300/50 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-dream max-h-[85vh] overflow-y-auto">
             <div className="flex items-center gap-2 mb-1">
               <Moon className="w-4 h-4 text-dream-glow" />
               <h3 className="text-lg font-display font-bold text-sleep-900">Play Tonight</h3>

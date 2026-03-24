@@ -77,22 +77,41 @@ export default function WeeklyBriefScreen({ childId, childName, onBack }) {
       <div className="max-w-lg mx-auto mt-4 space-y-4">
         {/* Current Brief */}
         {currentBrief ? (
-          <div className="bg-white/80 backdrop-blur-sm border-2 border-dream-glow/30 rounded-3xl p-5 shadow-card">
-            <div className="flex items-center gap-2 mb-3">
-              <Calendar className="w-4 h-4 text-dream-glow" />
-              <span className="text-xs font-display font-semibold text-dream-glow">This week</span>
-              <span className="text-xs text-sleep-400 font-body ml-auto">
-                {formatDateRange(currentBrief.week_start_date, currentBrief.week_end_date)}
-              </span>
-            </div>
-
-            <BriefContent brief={currentBrief} />
-
-            <div className="mt-4 pt-3 border-t border-cream-300/40">
-              <p className="text-[10px] text-sleep-400 font-body">
-                Based on {currentBrief.session_count || 0} story night{currentBrief.session_count !== 1 ? 's' : ''} this week
-              </p>
-            </div>
+          <div className="bg-white/80 backdrop-blur-sm border-2 border-dream-glow/30 rounded-3xl shadow-card overflow-hidden">
+            <button
+              onClick={() => setExpandedBriefId(expandedBriefId === currentBrief.id ? null : currentBrief.id)}
+              className="w-full flex items-center justify-between p-5 text-left"
+            >
+              <div className="flex items-center gap-2 flex-1">
+                <Calendar className="w-4 h-4 text-dream-glow" />
+                <span className="text-xs font-display font-semibold text-dream-glow">This week</span>
+                <span className="text-xs text-sleep-400 font-body ml-auto mr-2">
+                  {formatDateRange(currentBrief.week_start_date, currentBrief.week_end_date)}
+                </span>
+              </div>
+              {expandedBriefId === currentBrief.id ? (
+                <ChevronUp className="w-4 h-4 text-sleep-400 shrink-0" />
+              ) : (
+                <ChevronDown className="w-4 h-4 text-sleep-400 shrink-0" />
+              )}
+            </button>
+            {expandedBriefId !== currentBrief.id && (
+              <div className="px-5 pb-4 -mt-2">
+                <p className="text-xs text-sleep-400 font-body">
+                  Based on {currentBrief.session_count || 0} story night{currentBrief.session_count !== 1 ? 's' : ''} this week
+                </p>
+              </div>
+            )}
+            {expandedBriefId === currentBrief.id && (
+              <div className="px-5 pb-5">
+                <BriefContent brief={currentBrief} />
+                <div className="mt-4 pt-3 border-t border-cream-300/40">
+                  <p className="text-[10px] text-sleep-400 font-body">
+                    Based on {currentBrief.session_count || 0} story night{currentBrief.session_count !== 1 ? 's' : ''} this week
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
         ) : (
           <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-6 text-center shadow-card">
