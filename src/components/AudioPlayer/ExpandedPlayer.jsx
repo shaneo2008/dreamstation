@@ -175,10 +175,10 @@ const ExpandedPlayer = ({ audioRef, title, scriptLines = [], timingMetadata = nu
           <div className="mx-6 p-3 bg-dream-stardust/20 rounded-2xl border border-dream-glow/20 mb-3">
             <div className="text-[10px] text-dream-aurora mb-1 flex items-center font-display font-semibold">
               <div className="w-2 h-2 bg-dream-glow rounded-full mr-2 animate-pulse" />
-              Now Playing — {scriptLines[currentLineIndex].speaker}
+              Now Playing — {scriptLines[currentLineIndex].speaker || scriptLines[currentLineIndex].speaker_name}
             </div>
             <div className="text-sm text-sleep-900 leading-relaxed font-body">
-              {scriptLines[currentLineIndex].text}
+              {scriptLines[currentLineIndex].text || scriptLines[currentLineIndex].text_content}
             </div>
           </div>
         )}
@@ -197,8 +197,8 @@ const ExpandedPlayer = ({ audioRef, title, scriptLines = [], timingMetadata = nu
                     : 'bg-cream-100/40 hover:bg-cream-100/80 text-sleep-600 border-2 border-transparent'
                     }`}
                 >
-                  <div className="text-[10px] text-sleep-400 mb-0.5 font-display font-semibold">{line.speaker}</div>
-                  <div className="text-xs font-body">{line.text}</div>
+                  <div className="text-[10px] text-sleep-400 mb-0.5 font-display font-semibold">{line.speaker || line.speaker_name}</div>
+                  <div className="text-xs font-body">{line.text || line.text_content}</div>
                 </div>
               ))}
             </div>
