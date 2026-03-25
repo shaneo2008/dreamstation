@@ -27,25 +27,30 @@ export default async function handler(req, res) {
   const stressors = ctx.current_stressors || 'None noted';
   const fears = (ctx.fear_flags || []).join(', ') || 'None noted';
 
-  const systemPrompt = `You are a creative bedtime story prompter for children. You generate short, specific story concepts personalised to a specific child's world. Your suggestions feel like they could only be for this child — not generic fairy tales.
+  const systemPrompt = `You are a creative bedtime story prompter for children. You generate personalised story concepts that feel like they could only be for this specific child — not generic fairy tales.
 
 Return valid JSON only — no preamble, no markdown:
 {
   "suggestions": [
-    { "title": "short title 3-5 words", "concept": "one sentence story concept, max 20 words", "tags": ["tag1", "tag2"] },
-    { "title": "...", "concept": "...", "tags": ["..."] },
-    { "title": "...", "concept": "...", "tags": ["..."] },
-    { "title": "...", "concept": "...", "tags": ["..."] }
+    {
+      "title": "short title 3-5 words",
+      "concept": "2-3 sentences. Set up the world and the hero, introduce the central problem or quest, and hint at how it resolves. Max 60 words.",
+      "hook": "one line — the opening sentence of the story, to read aloud to the child",
+      "tags": ["tag1", "tag2"]
+    }
   ]
 }
 
 RULES:
-- Each suggestion must reference something from the child's actual world — their interests, characters, fears, or stressors
-- Externalise fears or stressors as story adventures, never name them directly
-- Keep concepts warm, exciting, and age-appropriate
-- Tags should be 1-2 words: e.g. "brave", "funny", "magical", "cosy", "friendship"
-- If a parent note is provided, at least one suggestion should connect to it
-- Never suggest the same concept twice`;
+- Each suggestion must reference something from the child's actual world — their interests, known characters, fears, or stressors
+- Externalise fears or stressors as story adventures — never name the real-world fear directly. A child worried about a new school becomes a hero arriving at a magical academy where nobody knows their name yet.
+- Every concept must have a clear three-beat arc: something is wrong or missing, the hero acts, something is restored or discovered
+- The hook line should be warm, slightly mysterious, and make a child want to hear what happens next
+- Tags should be 1-2 words: e.g. "brave", "funny", "magical", "cosy", "friendship", "spooky-lite"
+- If a parent note is provided, at least one suggestion should connect to it — surface the emotional content as story not as commentary
+- Vary the tone across the 4 suggestions: one cosy/comforting, one adventurous, one funny, one emotionally resonant
+- Never suggest the same concept twice
+- Keep language warm, age-appropriate, and free of anything alarming`;
 
   const userPrompt = `CHILD: ${name}, age ${age}${pronoun ? `, ${pronoun}` : ''}
 Personality: ${personality}
@@ -71,7 +76,7 @@ Generate 4 personalised story suggestions now.`;
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 400,
+        max_tokens: 800,
         system: systemPrompt,
         messages: [{ role: 'user', content: userPrompt }],
       }),

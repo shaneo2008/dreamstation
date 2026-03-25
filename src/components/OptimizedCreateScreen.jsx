@@ -84,6 +84,8 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
   const [suggestions, setSuggestions] = useState([]);
   const [suggestionsLoading, setSuggestionsLoading] = useState(false);
   const [childName, setChildName] = useState('');
+  const [carouselIndex, setCarouselIndex] = useState(0);
+  const [classicIndex, setClassicIndex] = useState(0);
 
   const fetchSuggestions = useCallback(async () => {
     if (!activeChildId) return;
@@ -210,7 +212,7 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
       </div>
 
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* AI Suggestions — For [Name] tonight */}
+        {/* AI Suggestions — Carousel */}
         {activeChildId && (
           <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card">
             <div className="flex items-center justify-between mb-4">
@@ -219,7 +221,7 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
                 {childName ? `For ${childName} tonight` : 'Story ideas'}
               </h2>
               <button
-                onClick={fetchSuggestions}
+                onClick={() => { setCarouselIndex(0); fetchSuggestions(); }}
                 disabled={suggestionsLoading}
                 className="p-2 text-sleep-400 hover:text-dream-glow transition-colors disabled:opacity-40"
                 title="Get new suggestions"
@@ -227,41 +229,88 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
                 <RefreshCw className={`w-4 h-4 ${suggestionsLoading ? 'animate-spin' : ''}`} />
               </button>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {suggestionsLoading ? (
-                [0, 1, 2, 3].map(i => (
-                  <div key={i} className="p-3 border-2 border-cream-300/40 rounded-2xl animate-pulse">
-                    <div className="h-4 bg-cream-300/40 rounded w-3/4 mb-2" />
-                    <div className="h-3 bg-cream-300/30 rounded w-full mb-1" />
-                    <div className="h-3 bg-cream-300/30 rounded w-2/3" />
-                  </div>
-                ))
-              ) : suggestions.length > 0 ? (
-                suggestions.map((s, i) => (
-                  <button
-                    key={i}
-                    onClick={() => handleSuggestionSelect(s)}
-                    className="p-3 text-left border-2 border-cream-300/60 rounded-2xl transition-all duration-200 hover:border-dream-glow/40 hover:bg-dream-stardust/20 active:scale-[0.98]"
+
+            {suggestionsLoading ? (
+              <div className="p-5 border-2 border-cream-300/40 rounded-2xl animate-pulse">
+                <div className="h-5 bg-cream-300/40 rounded w-2/3 mb-3" />
+                <div className="h-3 bg-cream-300/30 rounded w-full mb-1.5" />
+                <div className="h-3 bg-cream-300/30 rounded w-full mb-1.5" />
+                <div className="h-3 bg-cream-300/30 rounded w-3/4 mb-4" />
+                <div className="h-3 bg-cream-300/20 rounded w-full mb-3 italic" />
+                <div className="flex gap-2">
+                  <div className="h-5 bg-cream-300/30 rounded-full w-14" />
+                  <div className="h-5 bg-cream-300/30 rounded-full w-14" />
+                </div>
+              </div>
+            ) : suggestions.length > 0 ? (
+              <div>
+                {/* Card */}
+                <div className="overflow-hidden rounded-2xl border-2 border-cream-300/60">
+                  <div
+                    className="flex transition-transform duration-300 ease-out"
+                    style={{ transform: `translateX(-${carouselIndex * 100}%)` }}
                   >
-                    <div className="font-display font-semibold text-sm text-sleep-900 mb-1 line-clamp-1">{s.title}</div>
-                    <div className="text-xs text-sleep-500 leading-relaxed line-clamp-2 mb-2">{s.concept}</div>
-                    {s.tags && (
-                      <div className="flex flex-wrap gap-1">
-                        {s.tags.slice(0, 2).map((tag, ti) => (
-                          <span key={ti} className={`px-1.5 py-0.5 rounded text-[9px] font-display font-semibold ${TAG_COLORS[ti % TAG_COLORS.length]}`}>
-                            {tag}
-                          </span>
-                        ))}
+                    {suggestions.map((s, i) => (
+                      <div key={i} className="w-full shrink-0 p-5">
+                        <div className="font-display font-bold text-base text-sleep-900 mb-2">{s.title}</div>
+                        <p className="text-sm text-sleep-600 font-body leading-relaxed mb-3">{s.concept}</p>
+                        {s.hook && (
+                          <p className="text-xs text-dream-aurora font-body italic leading-relaxed mb-3 pl-3 border-l-2 border-dream-glow/30">
+                            "{s.hook}"
+                          </p>
+                        )}
+                        {s.tags && (
+                          <div className="flex flex-wrap gap-1.5 mb-4">
+                            {s.tags.map((tag, ti) => (
+                              <span key={ti} className={`px-2 py-0.5 rounded-full text-[10px] font-display font-semibold ${TAG_COLORS[ti % TAG_COLORS.length]}`}>
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                        )}
+                        <button
+                          onClick={() => handleSuggestionSelect(s)}
+                          className="w-full py-2.5 bg-dream-glow hover:bg-dream-aurora text-white rounded-xl font-display font-semibold text-sm transition-all active:scale-[0.98] shadow-glow-sm"
+                        >
+                          Use this story
+                        </button>
                       </div>
-                    )}
+                    ))}
+                  </div>
+                </div>
+
+                {/* Navigation */}
+                <div className="flex items-center justify-between mt-3 px-1">
+                  <button
+                    onClick={() => setCarouselIndex(Math.max(0, carouselIndex - 1))}
+                    disabled={carouselIndex === 0}
+                    className="px-3 py-1.5 text-xs font-display font-semibold text-sleep-500 hover:text-sleep-800 disabled:opacity-30 transition-colors"
+                  >
+                    ← Prev
                   </button>
-                ))
-              ) : null}
-            </div>
+                  <div className="flex gap-1.5">
+                    {suggestions.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setCarouselIndex(i)}
+                        className={`w-2 h-2 rounded-full transition-all duration-200 ${i === carouselIndex ? 'bg-dream-glow scale-125' : 'bg-cream-300/60 hover:bg-cream-400'}`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setCarouselIndex(Math.min(suggestions.length - 1, carouselIndex + 1))}
+                    disabled={carouselIndex >= suggestions.length - 1}
+                    className="px-3 py-1.5 text-xs font-display font-semibold text-sleep-500 hover:text-sleep-800 disabled:opacity-30 transition-colors"
+                  >
+                    Next →
+                  </button>
+                </div>
+              </div>
+            ) : null}
           </div>
         )}
 
-        {/* Classic Stories — collapsed by default */}
+        {/* Classic Stories — collapsed by default, carousel inside */}
         <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl shadow-card overflow-hidden">
           <button
             onClick={() => setShowClassicTemplates(!showClassicTemplates)}
@@ -276,27 +325,69 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
               <ChevronDown className="w-4 h-4 text-sleep-400" />
             )}
           </button>
-          {showClassicTemplates && (
-            <div className="px-5 pb-5 -mt-2">
-              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                {Object.entries(QUICKSTART_TEMPLATES).map(([key, template]) => (
-                  <button
-                    key={key}
-                    className={`p-3 text-left border-2 rounded-2xl transition-all duration-200 ${selectedTemplate === key
-                        ? 'bg-dream-stardust/40 border-dream-glow text-sleep-900'
-                        : 'bg-cream-100/60 border-cream-300/60 text-sleep-600 hover:border-dream-glow/30'
-                      }`}
-                    onClick={() => handleTemplateSelect(key)}
+          {showClassicTemplates && (() => {
+            const templates = Object.entries(QUICKSTART_TEMPLATES);
+            return (
+              <div className="px-5 pb-5 -mt-2">
+                <div className="overflow-hidden rounded-2xl border-2 border-cream-300/60">
+                  <div
+                    className="flex transition-transform duration-300 ease-out"
+                    style={{ transform: `translateX(-${classicIndex * 100}%)` }}
                   >
-                    <div className="font-display font-semibold text-sm mb-1">{template.name}</div>
-                    <div className="text-xs text-sleep-400 leading-relaxed line-clamp-2">
-                      {template.concept.substring(0, 70)}…
-                    </div>
+                    {templates.map(([key, template]) => (
+                      <div key={key} className="w-full shrink-0 p-5">
+                        <div className="font-display font-bold text-base text-sleep-900 mb-2">{template.name}</div>
+                        <p className="text-sm text-sleep-600 font-body leading-relaxed mb-3">{template.concept}</p>
+                        <div className="flex flex-wrap gap-1.5 mb-4">
+                          {template.characters.map((c, ci) => (
+                            <span key={ci} className="px-2 py-0.5 rounded-full text-[10px] font-display font-semibold bg-cream-200/80 text-sleep-500">
+                              {c.name}
+                            </span>
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => handleTemplateSelect(key)}
+                          className={`w-full py-2.5 rounded-xl font-display font-semibold text-sm transition-all active:scale-[0.98] ${selectedTemplate === key
+                            ? 'bg-dream-aurora text-white shadow-glow-sm'
+                            : 'bg-dream-glow hover:bg-dream-aurora text-white shadow-glow-sm'
+                          }`}
+                        >
+                          {selectedTemplate === key ? 'Selected ✓' : 'Use this story'}
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Navigation */}
+                <div className="flex items-center justify-between mt-3 px-1">
+                  <button
+                    onClick={() => setClassicIndex(Math.max(0, classicIndex - 1))}
+                    disabled={classicIndex === 0}
+                    className="px-3 py-1.5 text-xs font-display font-semibold text-sleep-500 hover:text-sleep-800 disabled:opacity-30 transition-colors"
+                  >
+                    ← Prev
                   </button>
-                ))}
+                  <div className="flex gap-1.5">
+                    {templates.map((_, i) => (
+                      <button
+                        key={i}
+                        onClick={() => setClassicIndex(i)}
+                        className={`w-2 h-2 rounded-full transition-all duration-200 ${i === classicIndex ? 'bg-dream-glow scale-125' : 'bg-cream-300/60 hover:bg-cream-400'}`}
+                      />
+                    ))}
+                  </div>
+                  <button
+                    onClick={() => setClassicIndex(Math.min(templates.length - 1, classicIndex + 1))}
+                    disabled={classicIndex >= templates.length - 1}
+                    className="px-3 py-1.5 text-xs font-display font-semibold text-sleep-500 hover:text-sleep-800 disabled:opacity-30 transition-colors"
+                  >
+                    Next →
+                  </button>
+                </div>
               </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
 
         {/* Generate Script Section */}
