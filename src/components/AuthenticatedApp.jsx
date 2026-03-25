@@ -338,6 +338,7 @@ const AuthenticatedApp = () => {
         <OptimizedCreateScreen
           onBack={() => setShowCreateStory(false)}
           isGenerating={isGenerating}
+          activeChildId={activeChildId}
           onGenerate={async (payload) => {
             console.log('Story generation payload:', payload);
             setIsGenerating(true);

@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '../contexts/AuthContext';
-import { Zap, Users, Sparkles, Plus, X, ArrowLeft, Wand2 } from 'lucide-react';
+import { db } from '../lib/supabase';
+import { Zap, Users, Sparkles, Plus, X, ArrowLeft, Wand2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 
-// Enhanced quickstart templates
+// Static fallback templates
 const QUICKSTART_TEMPLATES = {
   ADVENTURE: {
     name: 'Adventure Quest',
@@ -11,8 +12,7 @@ const QUICKSTART_TEMPLATES = {
       { name: 'Alex', description: 'Brave young hero with a kind heart' },
       { name: 'Luna', description: 'Wise magical guide' },
       { name: 'Shadow King', description: 'Ancient villain who cast the curse' }
-    ],
-    genre: 'Fantasy Adventure'
+    ]
   },
   FRIENDSHIP: {
     name: 'Friendship Story',
@@ -21,8 +21,7 @@ const QUICKSTART_TEMPLATES = {
       { name: 'Maya', description: 'Curious city kid who loves puzzles' },
       { name: 'Forest', description: 'Nature-loving country kid with animal friends' },
       { name: 'Mrs. Willow', description: 'Mysterious librarian with secrets' }
-    ],
-    genre: 'Friendship Mystery'
+    ]
   },
   MAGIC_SCHOOL: {
     name: 'Magic School',
@@ -32,8 +31,7 @@ const QUICKSTART_TEMPLATES = {
       { name: 'Professor Sage', description: 'Kind but worried headmaster' },
       { name: 'Zara', description: 'Talented student who becomes a friend' },
       { name: 'The Shadow', description: 'Dark force threatening the school' }
-    ],
-    genre: 'Magical School'
+    ]
   },
   SPACE_ADVENTURE: {
     name: 'Space Adventure',
@@ -43,8 +41,7 @@ const QUICKSTART_TEMPLATES = {
       { name: 'Zyx', description: 'Friendly alien with special abilities' },
       { name: 'Commander Steel', description: 'Ruthless space pirate leader' },
       { name: 'ARIA', description: 'Helpful AI companion' }
-    ],
-    genre: 'Science Fiction'
+    ]
   },
   ANIMAL_KINGDOM: {
     name: 'Animal Kingdom',
@@ -54,8 +51,7 @@ const QUICKSTART_TEMPLATES = {
       { name: 'Oakley', description: 'Wise old owl who guides Pip' },
       { name: 'Whiskers', description: 'Mischievous cat who caused the trouble' },
       { name: 'Melody', description: 'Magical songbird guardian' }
-    ],
-    genre: 'Animal Fantasy'
+    ]
   },
   UNDERWATER: {
     name: 'Underwater Adventure',
@@ -65,19 +61,63 @@ const QUICKSTART_TEMPLATES = {
       { name: 'Finn', description: 'Loyal dolphin best friend' },
       { name: 'King Triton', description: 'Wise ruler of the sea' },
       { name: 'Coral', description: 'Ancient sea witch with the answers' }
-    ],
-    genre: 'Underwater Fantasy'
+    ]
   }
 };
 
-const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false }) => {
+const TAG_COLORS = [
+  'bg-dream-stardust/40 text-dream-aurora',
+  'bg-pastel-peach/30 text-pastel-peach',
+  'bg-success/10 text-success',
+  'bg-pastel-lavender/30 text-pastel-lavender',
+];
+
+const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activeChildId }) => {
   const { user } = useAuth();
   const [storyContent, setStoryContent] = useState('');
   const [selectedTemplate, setSelectedTemplate] = useState('');
   const [characters, setCharacters] = useState([{ name: '', description: '' }]);
-  const [genre, setGenre] = useState('');
-  const [specialInstructions, setSpecialInstructions] = useState('');
   const [parentNote, setParentNote] = useState('');
+  const [showClassicTemplates, setShowClassicTemplates] = useState(false);
+
+  // AI suggestions state
+  const [suggestions, setSuggestions] = useState([]);
+  const [suggestionsLoading, setSuggestionsLoading] = useState(false);
+  const [childName, setChildName] = useState('');
+
+  const fetchSuggestions = useCallback(async () => {
+    if (!activeChildId) return;
+    setSuggestionsLoading(true);
+    try {
+      const profile = await db.getChildProfile(activeChildId);
+      if (profile?.name) setChildName(profile.name);
+      let dynamicContext = {};
+      try {
+        dynamicContext = await db.getChildDynamicContext(activeChildId) || {};
+      } catch { /* no dynamic context yet */ }
+
+      const res = await fetch('/api/generate-suggestions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          childProfile: profile,
+          dynamicContext,
+          parentNote: null,
+        }),
+      });
+      const data = await res.json();
+      setSuggestions(data.suggestions || []);
+    } catch (e) {
+      console.error('Suggestions failed:', e);
+      setSuggestions([]);
+    } finally {
+      setSuggestionsLoading(false);
+    }
+  }, [activeChildId]);
+
+  useEffect(() => {
+    fetchSuggestions();
+  }, [fetchSuggestions]);
 
   const handleTemplateSelect = (templateKey) => {
     if (templateKey && QUICKSTART_TEMPLATES[templateKey]) {
@@ -85,10 +125,14 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false }) => 
       setSelectedTemplate(templateKey);
       setStoryContent(template.concept);
       setCharacters(template.characters);
-      setGenre(template.genre);
     } else {
       setSelectedTemplate('');
     }
+  };
+
+  const handleSuggestionSelect = (suggestion) => {
+    setStoryContent(suggestion.concept);
+    setSelectedTemplate('');
   };
 
   const addCharacter = () => {
@@ -132,13 +176,13 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false }) => 
       storyId: generateUUID(),
       concept: {
         initialConcept: storyContent,
-        genre: genre || 'Adventure',
+        genre: 'Adventure',
         targetEpisodes: 1,
         episodeLengthMinutes: 10
       },
       characters: characters.filter(char => char.name.trim()),
       preferences: {
-        specialInstructions: specialInstructions,
+        specialInstructions: parentNote.trim() || '',
         scriptLengthRequirement: "Generate exactly 130-140 script lines for a 10-minute audio drama. Mix of 75-85 dialogue lines (5-12 words each) and 55-60 narration lines (12-20 words each) for proper pacing and timing."
       },
       parentNote: parentNote.trim() || null
@@ -166,39 +210,93 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false }) => 
       </div>
 
       <div className="max-w-2xl mx-auto space-y-6">
-        {/* Quickstart Templates */}
-        <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card">
-          <h2 className="flex items-center gap-2 text-lg font-display font-bold text-sleep-900 mb-4">
-            <Sparkles className="h-5 w-5 text-dream-glow" />
-            Quickstart Templates
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-            {Object.entries(QUICKSTART_TEMPLATES).map(([key, template]) => (
+        {/* AI Suggestions — For [Name] tonight */}
+        {activeChildId && (
+          <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="flex items-center gap-2 text-lg font-display font-bold text-sleep-900">
+                <Sparkles className="h-5 w-5 text-dream-glow" />
+                {childName ? `For ${childName} tonight` : 'Story ideas'}
+              </h2>
               <button
-                key={key}
-                className={`p-3 text-left border-2 rounded-2xl transition-all duration-200 ${selectedTemplate === key
-                    ? 'bg-dream-stardust/40 border-dream-glow text-sleep-900'
-                    : 'bg-cream-100/60 border-cream-300/60 text-sleep-600 hover:border-dream-glow/30'
-                  }`}
-                onClick={() => handleTemplateSelect(key)}
+                onClick={fetchSuggestions}
+                disabled={suggestionsLoading}
+                className="p-2 text-sleep-400 hover:text-dream-glow transition-colors disabled:opacity-40"
+                title="Get new suggestions"
               >
-                <div className="font-display font-semibold text-sm mb-1">{template.name}</div>
-                <div className="text-xs text-sleep-400 leading-relaxed line-clamp-2">
-                  {template.concept.substring(0, 70)}…
-                </div>
+                <RefreshCw className={`w-4 h-4 ${suggestionsLoading ? 'animate-spin' : ''}`} />
               </button>
-            ))}
-            <button
-              className={`p-3 text-left border-2 rounded-2xl transition-all duration-200 ${selectedTemplate === ''
-                  ? 'bg-dream-stardust/40 border-dream-glow text-sleep-900'
-                  : 'bg-cream-100/60 border-cream-300/60 text-sleep-600 hover:border-dream-glow/30'
-                }`}
-              onClick={() => handleTemplateSelect('')}
-            >
-              <div className="font-display font-semibold text-sm">Custom Story</div>
-              <div className="text-xs text-sleep-400 mt-1">Start from scratch</div>
-            </button>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              {suggestionsLoading ? (
+                [0, 1, 2, 3].map(i => (
+                  <div key={i} className="p-3 border-2 border-cream-300/40 rounded-2xl animate-pulse">
+                    <div className="h-4 bg-cream-300/40 rounded w-3/4 mb-2" />
+                    <div className="h-3 bg-cream-300/30 rounded w-full mb-1" />
+                    <div className="h-3 bg-cream-300/30 rounded w-2/3" />
+                  </div>
+                ))
+              ) : suggestions.length > 0 ? (
+                suggestions.map((s, i) => (
+                  <button
+                    key={i}
+                    onClick={() => handleSuggestionSelect(s)}
+                    className="p-3 text-left border-2 border-cream-300/60 rounded-2xl transition-all duration-200 hover:border-dream-glow/40 hover:bg-dream-stardust/20 active:scale-[0.98]"
+                  >
+                    <div className="font-display font-semibold text-sm text-sleep-900 mb-1 line-clamp-1">{s.title}</div>
+                    <div className="text-xs text-sleep-500 leading-relaxed line-clamp-2 mb-2">{s.concept}</div>
+                    {s.tags && (
+                      <div className="flex flex-wrap gap-1">
+                        {s.tags.slice(0, 2).map((tag, ti) => (
+                          <span key={ti} className={`px-1.5 py-0.5 rounded text-[9px] font-display font-semibold ${TAG_COLORS[ti % TAG_COLORS.length]}`}>
+                            {tag}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </button>
+                ))
+              ) : null}
+            </div>
           </div>
+        )}
+
+        {/* Classic Stories — collapsed by default */}
+        <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl shadow-card overflow-hidden">
+          <button
+            onClick={() => setShowClassicTemplates(!showClassicTemplates)}
+            className="w-full flex items-center justify-between p-5 text-left"
+          >
+            <h2 className="flex items-center gap-2 text-sm font-display font-semibold text-sleep-600">
+              Classic Stories
+            </h2>
+            {showClassicTemplates ? (
+              <ChevronUp className="w-4 h-4 text-sleep-400" />
+            ) : (
+              <ChevronDown className="w-4 h-4 text-sleep-400" />
+            )}
+          </button>
+          {showClassicTemplates && (
+            <div className="px-5 pb-5 -mt-2">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                {Object.entries(QUICKSTART_TEMPLATES).map(([key, template]) => (
+                  <button
+                    key={key}
+                    className={`p-3 text-left border-2 rounded-2xl transition-all duration-200 ${selectedTemplate === key
+                        ? 'bg-dream-stardust/40 border-dream-glow text-sleep-900'
+                        : 'bg-cream-100/60 border-cream-300/60 text-sleep-600 hover:border-dream-glow/30'
+                      }`}
+                    onClick={() => handleTemplateSelect(key)}
+                  >
+                    <div className="font-display font-semibold text-sm mb-1">{template.name}</div>
+                    <div className="text-xs text-sleep-400 leading-relaxed line-clamp-2">
+                      {template.concept.substring(0, 70)}…
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Generate Script Section */}
@@ -269,39 +367,16 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false }) => 
             </div>
           </div>
 
-          {/* Genre & Special Instructions */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <label htmlFor="genre" className="block text-sm font-display font-semibold text-sleep-600 mb-2">Genre</label>
-              <input
-                id="genre"
-                value={genre}
-                onChange={(e) => setGenre(e.target.value)}
-                placeholder="e.g., Fantasy Adventure"
-                className="w-full p-2.5 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 placeholder-sleep-400 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="instructions" className="block text-sm font-display font-semibold text-sleep-600 mb-2">Special Instructions</label>
-              <input
-                id="instructions"
-                value={specialInstructions}
-                onChange={(e) => setSpecialInstructions(e.target.value)}
-                placeholder="Any specific requests"
-                className="w-full p-2.5 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 placeholder-sleep-400 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
-              />
-            </div>
-          </div>
-
-          {/* Parent Note — optional nightly context */}
+          {/* Anything to weave in? — consolidated field */}
           <div>
-            <label htmlFor="parent-note" className="block text-sm font-display font-semibold text-sleep-600 mb-2">Anything on their mind tonight?</label>
+            <label htmlFor="parent-note" className="block text-sm font-display font-semibold text-sleep-600 mb-2">
+              Anything to weave into tonight's story?
+            </label>
             <textarea
               id="parent-note"
               value={parentNote}
               onChange={(e) => setParentNote(e.target.value)}
-              placeholder="Optional — helps personalise tonight's story"
+              placeholder="Optional — mood, big day, specific requests, anything on their mind…"
               rows={2}
               className="w-full p-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl resize-none text-sleep-900 placeholder-sleep-400 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
             />
