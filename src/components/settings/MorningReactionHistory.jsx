@@ -147,13 +147,13 @@ export default function MorningReactionHistory({ childId, childName, onBack }) {
                         <div>
                           <textarea
                             value={editingNoteText}
-                            onChange={(e) => setEditingNoteText(e.target.value.slice(0, 300))}
+                            onChange={(e) => setEditingNoteText(e.target.value.slice(0, 1000))}
                             placeholder="Add your own thoughts about this night…"
                             rows={2}
                             className="w-full px-3 py-2 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-xs text-sleep-900 placeholder-sleep-400 font-body resize-none focus:border-dream-glow/50 focus:outline-none transition-all"
                           />
                           <div className="flex items-center justify-between mt-1.5">
-                            <span className="text-[10px] text-sleep-400 font-body">{editingNoteText.length}/300</span>
+                            <span className="text-[10px] text-sleep-400 font-body">{editingNoteText.length}/1000</span>
                             <div className="flex gap-2">
                               <button
                                 onClick={() => { setEditingNoteId(null); setEditingNoteText(''); }}

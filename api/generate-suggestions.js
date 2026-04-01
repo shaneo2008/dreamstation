@@ -50,6 +50,7 @@ RULES:
 - If known characters exist in the child's world, you may weave ONE into a suggestion naturally — but don't force all of them in
 - If a parent note is provided, let it invisibly shape one suggestion — surface the emotional need as story, never as commentary
 - Tags should feel like a mood: "cosy", "wild", "funny", "brave", "mysterious", "heartfelt", "spooky-lite"
+- The hero in every concept MUST be named ${name} — use the child's actual name, not a made-up character name
 - Never suggest the same concept twice
 - Write like you're pitching to a child, not describing to a therapist`;
 

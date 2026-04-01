@@ -149,12 +149,12 @@ export default function MorningReflectionPopup({ reactionRecord, childName, onCo
           </p>
           <textarea
             value={parentNote}
-            onChange={(e) => setParentNote(e.target.value.slice(0, 300))}
+            onChange={(e) => setParentNote(e.target.value.slice(0, 1000))}
             placeholder="Optional..."
             rows={3}
             className="w-full px-4 py-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 placeholder-sleep-400 font-body resize-none focus:border-dream-glow/50 focus:outline-none transition-all mb-2"
           />
-          <p className="text-[10px] text-sleep-400 font-body mb-4 text-right">{parentNote.length}/300</p>
+          <p className="text-[10px] text-sleep-400 font-body mb-4 text-right">{parentNote.length}/1000</p>
           <button
             onClick={handleComplete}
             disabled={isSaving}

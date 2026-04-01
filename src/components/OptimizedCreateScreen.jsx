@@ -103,7 +103,7 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
     if (!suggestionsLoading) { setLoadingMsgIndex(0); return; }
     const timer = setInterval(() => {
       setLoadingMsgIndex(prev => (prev + 1) % 8);
-    }, 2000);
+    }, 2500);
     return () => clearInterval(timer);
   }, [suggestionsLoading]);
 

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react'
-import { ArrowLeft, Calendar, ChevronDown, ChevronUp, BookOpen, Eye } from 'lucide-react'
+import { ArrowLeft, Calendar, ChevronDown, ChevronUp, BookOpen, Eye, MessageSquare, Check } from 'lucide-react'
 import { db } from '../lib/supabase'
 
 /**
@@ -14,6 +14,35 @@ export default function WeeklyBriefScreen({ childId, childName, onBack }) {
   const [briefs, setBriefs] = useState([])
   const [loading, setLoading] = useState(true)
   const [expandedBriefId, setExpandedBriefId] = useState(null)
+  const [editingNoteId, setEditingNoteId] = useState(null)
+  const [editingNoteText, setEditingNoteText] = useState('')
+  const [savingNoteId, setSavingNoteId] = useState(null)
+
+  const handleEditNote = (brief) => {
+    setEditingNoteId(brief.id)
+    setEditingNoteText(brief.parent_note || '')
+  }
+
+  const handleSaveNote = async (briefId) => {
+    setSavingNoteId(briefId)
+    try {
+      // Direct update for parent_note
+      const supabaseModule = await import('../lib/supabase')
+      await supabaseModule.supabase
+        .from('weekly_briefs')
+        .update({ parent_note: editingNoteText.trim() || null })
+        .eq('id', briefId)
+      setBriefs(prev => prev.map(b =>
+        b.id === briefId ? { ...b, parent_note: editingNoteText.trim() || null } : b
+      ))
+      setEditingNoteId(null)
+      setEditingNoteText('')
+    } catch (err) {
+      console.error('Failed to save brief note:', err)
+    } finally {
+      setSavingNoteId(null)
+    }
+  }
 
   useEffect(() => {
     const loadBriefs = async () => {
@@ -110,6 +139,7 @@ export default function WeeklyBriefScreen({ childId, childName, onBack }) {
                     Based on {currentBrief.session_count || 0} story night{currentBrief.session_count !== 1 ? 's' : ''} this week
                   </p>
                 </div>
+                <BriefNote brief={currentBrief} editingNoteId={editingNoteId} editingNoteText={editingNoteText} setEditingNoteText={setEditingNoteText} setEditingNoteId={setEditingNoteId} savingNoteId={savingNoteId} handleEditNote={handleEditNote} handleSaveNote={handleSaveNote} />
               </div>
             )}
           </div>
@@ -166,6 +196,7 @@ export default function WeeklyBriefScreen({ childId, childName, onBack }) {
                       <p className="text-[10px] text-sleep-400 font-body mt-3">
                         Based on {brief.session_count || 0} story night{brief.session_count !== 1 ? 's' : ''}
                       </p>
+                      <BriefNote brief={brief} editingNoteId={editingNoteId} editingNoteText={editingNoteText} setEditingNoteText={setEditingNoteText} setEditingNoteId={setEditingNoteId} savingNoteId={savingNoteId} handleEditNote={handleEditNote} handleSaveNote={handleSaveNote} />
                     </div>
                   )}
                 </div>
@@ -174,6 +205,62 @@ export default function WeeklyBriefScreen({ childId, childName, onBack }) {
           </div>
         )}
       </div>
+    </div>
+  )
+}
+
+/**
+ * Brief Note — editable parent note on each brief
+ */
+function BriefNote({ brief, editingNoteId, editingNoteText, setEditingNoteText, setEditingNoteId, savingNoteId, handleEditNote, handleSaveNote }) {
+  return (
+    <div className="mt-3 pt-2 border-t border-cream-300/40">
+      {editingNoteId === brief.id ? (
+        <div>
+          <textarea
+            value={editingNoteText}
+            onChange={(e) => setEditingNoteText(e.target.value.slice(0, 1000))}
+            placeholder="Add your own thoughts about this week…"
+            rows={3}
+            className="w-full px-3 py-2 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-xs text-sleep-900 placeholder-sleep-400 font-body resize-none focus:border-dream-glow/50 focus:outline-none transition-all"
+          />
+          <div className="flex items-center justify-between mt-1.5">
+            <span className="text-[10px] text-sleep-400 font-body">{editingNoteText.length}/1000</span>
+            <div className="flex gap-2">
+              <button
+                onClick={() => { setEditingNoteId(null); setEditingNoteText(''); }}
+                className="px-2.5 py-1 text-[10px] text-sleep-400 hover:text-sleep-600 font-display font-semibold transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleSaveNote(brief.id)}
+                disabled={savingNoteId === brief.id}
+                className="flex items-center gap-1 px-2.5 py-1 bg-dream-glow hover:bg-dream-aurora text-white rounded-lg text-[10px] font-display font-semibold transition-all disabled:opacity-50"
+              >
+                <Check className="w-3 h-3" />
+                {savingNoteId === brief.id ? 'Saving\u2026' : 'Save'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : brief.parent_note ? (
+        <button
+          onClick={() => handleEditNote(brief)}
+          className="w-full text-left group"
+        >
+          <p className="text-[10px] text-sleep-400 font-body italic">"{brief.parent_note}"</p>
+          <p className="text-[9px] text-sleep-300 font-body mt-0.5 group-hover:text-dream-glow transition-colors">Tap to edit</p>
+        </button>
+      ) : (
+        <button
+          onClick={() => handleEditNote(brief)}
+          className="flex items-center gap-1.5 text-[10px] text-sleep-400 hover:text-dream-glow font-body transition-colors mt-1"
+        >
+          <MessageSquare className="w-3 h-3" />
+          Add a note about this week
+        </button>
+      )}
     </div>
   )
 }
