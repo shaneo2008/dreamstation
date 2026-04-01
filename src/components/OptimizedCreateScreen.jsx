@@ -86,6 +86,26 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
   const [childName, setChildName] = useState('');
   const [carouselIndex, setCarouselIndex] = useState(0);
   const [classicIndex, setClassicIndex] = useState(0);
+  const [loadingMsgIndex, setLoadingMsgIndex] = useState(0);
+
+  const loadingMessages = [
+    `Thinking about what ${childName || 'they'} love${childName ? 's' : ''}…`,
+    'Checking in with their world this week…',
+    'Weaving in a little magic…',
+    'Almost ready — something good is coming…',
+    'Pulling the threads together…',
+    'Listening for tonight\'s story…',
+    'Finding just the right adventure…',
+    'Nearly there…',
+  ];
+
+  useEffect(() => {
+    if (!suggestionsLoading) { setLoadingMsgIndex(0); return; }
+    const timer = setInterval(() => {
+      setLoadingMsgIndex(prev => (prev + 1) % 8);
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [suggestionsLoading]);
 
   const fetchSuggestions = useCallback(async () => {
     if (!activeChildId) return;
@@ -231,15 +251,21 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
             </div>
 
             {suggestionsLoading ? (
-              <div className="p-5 border-2 border-cream-300/40 rounded-2xl animate-pulse">
-                <div className="h-5 bg-cream-300/40 rounded w-2/3 mb-3" />
-                <div className="h-3 bg-cream-300/30 rounded w-full mb-1.5" />
-                <div className="h-3 bg-cream-300/30 rounded w-full mb-1.5" />
-                <div className="h-3 bg-cream-300/30 rounded w-3/4 mb-4" />
-                <div className="h-3 bg-cream-300/20 rounded w-full mb-3 italic" />
-                <div className="flex gap-2">
-                  <div className="h-5 bg-cream-300/30 rounded-full w-14" />
-                  <div className="h-5 bg-cream-300/30 rounded-full w-14" />
+              <div className="p-6 border-2 border-dream-glow/20 rounded-2xl bg-dream-stardust/10 text-center">
+                <div className="w-10 h-10 mx-auto mb-4 rounded-full bg-dream-glow/20 flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-dream-glow animate-pulse" />
+                </div>
+                <p className="text-sm font-display font-semibold text-sleep-700 transition-opacity duration-500" key={loadingMsgIndex}>
+                  {loadingMessages[loadingMsgIndex]}
+                </p>
+                <div className="flex justify-center gap-1 mt-4">
+                  {[0, 1, 2].map(i => (
+                    <div
+                      key={i}
+                      className="w-1.5 h-1.5 rounded-full bg-dream-glow/60 animate-bounce"
+                      style={{ animationDelay: `${i * 0.15}s` }}
+                    />
+                  ))}
                 </div>
               </div>
             ) : suggestions.length > 0 ? (

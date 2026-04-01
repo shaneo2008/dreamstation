@@ -212,18 +212,20 @@ const AuthenticatedApp = () => {
     if (!playTonightScript || !activeChildId) return;
     setPlayTonightLoading(true);
     try {
-      const storyId = playTonightScript.story_id || null;
-      const count = await db.getPlaybackCount14d(storyId, activeChildId);
+      const storyId = playTonightScript.story_id || playTonightScript.id || null;
+      const playedBefore = storyId ? await db.hasBeenPlayed(storyId, activeChildId) : false;
+      const nightType = playedBefore ? 'playback' : 'co_creation';
+      const count = playedBefore ? await db.getPlaybackCount14d(storyId, activeChildId) : 0;
       await db.createStorySession({
         child_id: activeChildId,
         user_id: user.id,
-        night_type: 'playback',
-        is_comfort_story: true,
+        night_type: nightType,
+        is_comfort_story: playedBefore,
         source_story_id: storyId,
         source_story_title: playTonightScript.title,
-        story_prompt: null,
+        story_prompt: !playedBefore ? (playTonightScript.title || null) : null,
         parent_note: playTonightNote.trim() || null,
-        playback_count_14d: count,
+        playback_count_14d: playedBefore ? count : null,
       });
       setPlayTonightScript(null);
       setPlayTonightNote('');
@@ -429,14 +431,9 @@ const AuthenticatedApp = () => {
                 // Create story_session record if child profile exists
                 if (activeChildId && result.script_id) {
                   try {
-                    await db.createStorySession({
-                      child_id: activeChildId,
-                      user_id: user.id,
-                      story_prompt: payload.concept?.initialConcept || '',
-                      parent_note: payload.parentNote || null,
-                      story_id: payload.storyId,
-                      mode: 'co-creation',
-                    });
+                    // Session recording moved to Play Tonight flow
+                    // First play of a story = co_creation, subsequent = playback
+                    console.log('📝 Story created. Session will be recorded on first play.');
                     console.log('📝 Story session recorded for child:', activeChildId);
                   } catch (sessionErr) {
                     console.warn('⚠️ Could not create story session:', sessionErr.message);

@@ -467,6 +467,17 @@ export const db = {
     return data
   },
 
+  async hasBeenPlayed(scriptId, childId) {
+    const { count, error } = await supabase
+      .from(tables.story_sessions)
+      .select('id', { count: 'exact', head: true })
+      .eq('source_story_id', scriptId)
+      .eq('child_id', childId)
+    
+    if (error) throw error
+    return (count ?? 0) > 0
+  },
+
   async getPlaybackCount14d(sourceStoryId, childId) {
     const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString()
     const { count, error } = await supabase
