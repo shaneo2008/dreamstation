@@ -18,10 +18,34 @@ const saveCache = new Map();
 const CACHE_TTL = 2000; // 2 seconds
 
 function getCacheKey(scriptData, userId) {
-  const title = scriptData.title || 'Untitled Script';
+  const title = scriptData.title || 'Untitled Story';
   const linesCount = scriptData.lines?.length || 0;
   const firstLine = scriptData.lines?.[0]?.text || '';
   return `${userId}-${title}-${linesCount}-${firstLine.slice(0, 50)}`;
+}
+
+// Safely parse metadata whether it arrives as an object, a JSON string,
+// or the double-encoded "=\"{...}\"" format produced by an older n8n expression bug.
+function parseMetadata(raw) {
+  if (!raw) return {};
+  if (typeof raw === 'object') return raw;
+
+  try {
+    let str = raw;
+
+    // Strip the leading =" and trailing " if present (double-encoded artifact)
+    if (typeof str === 'string' && str.startsWith('="')) {
+      str = str.slice(2);
+      if (str.endsWith('"')) str = str.slice(0, -1);
+      // Unescape the inner string
+      str = str.replace(/\\"/g, '"').replace(/\\\\/g, '\\');
+    }
+
+    return JSON.parse(str);
+  } catch (e) {
+    console.warn('⚠️ Could not parse script metadata:', e.message);
+    return {};
+  }
 }
 
 export const saveScriptToDatabase = async (scriptData, userId) => {
@@ -29,7 +53,7 @@ export const saveScriptToDatabase = async (scriptData, userId) => {
     console.log('💾 Saving script to Supabase:', { scriptData, userId });
     
     if (!userId) {
-      throw new Error('User ID is required to save script');
+      throw new Error('User ID is required to save story');
     }
     
     // Check cache to prevent React Strict Mode double-saves
@@ -58,7 +82,7 @@ export const saveScriptToDatabase = async (scriptData, userId) => {
     const scriptToSave = {
       id: scriptId,
       user_id: userId,
-      title: scriptData.title || 'Untitled Script',
+      title: scriptData.title || 'Untitled Story',
       status: 'draft',
       total_lines: scriptData.lines?.length || 0,
       estimated_duration: Math.ceil((scriptData.lines?.length || 0) * 0.5), // rough estimate
@@ -75,7 +99,7 @@ export const saveScriptToDatabase = async (scriptData, userId) => {
     
     if (scriptError) {
       console.error('❌ Script upsert error:', scriptError);
-      throw new Error(`Failed to save script: ${scriptError.message}`);
+      throw new Error(`Failed to save story: ${scriptError.message}`);
     }
     
     console.log('✅ Script saved to Supabase:', script.id);
@@ -107,7 +131,7 @@ export const saveScriptToDatabase = async (scriptData, userId) => {
       
       if (linesError) {
         console.error('❌ Script lines error:', linesError);
-        throw new Error(`Failed to save script lines: ${linesError.message}`);
+        throw new Error(`Failed to save story lines: ${linesError.message}`);
       }
       
       console.log('✅ Script lines saved:', linesToSave.length);
@@ -163,11 +187,13 @@ export const loadSavedScripts = async (userId) => {
     
     // Debug: Log audio productions for each script
     scripts?.forEach((script, index) => {
+      const meta = parseMetadata(script.metadata);
       console.log(`🎵 Script ${index + 1} (${script.title}):`, {
         id: script.id,
-        audio_productions: script.audio_productions,
         hasAudioProductions: script.audio_productions && script.audio_productions.length > 0,
-        audioUrl: script.audio_productions?.[0]?.audio_url
+        audioUrl: script.audio_productions?.[0]?.audio_url,
+        summary: meta.summary || '(none)',
+        characters: meta.characters?.length || 0
       });
     });
     
@@ -175,7 +201,10 @@ export const loadSavedScripts = async (userId) => {
     const transformedScripts = (scripts || []).map(script => {
       const lines = script.script_lines || [];
       const speakers = [...new Set(lines.map(line => line.speaker_name))].filter(Boolean);
-      
+
+      // Parse metadata defensively — handles object, JSON string, and double-encoded string
+      const parsedMetadata = parseMetadata(script.metadata);
+
       return {
         id: script.id,
         story_id: script.story_id || null,
@@ -187,7 +216,10 @@ export const loadSavedScripts = async (userId) => {
         audioUrl: script.audio_productions?.[0]?.audio_url || null,
         audioDuration: script.audio_productions?.[0]?.audio_duration || null,
         audioStatus: script.audio_productions?.[0]?.status || null,
+        // Spread parsed metadata (preserving summary, characters, etc.)
+        // then layer computed counts on top
         metadata: {
+          ...parsedMetadata,
           totalLines: lines.length,
           charactersCount: speakers.length,
           dialogueCount: lines.filter(line => line.line_type === 'dialogue').length,
@@ -241,19 +273,18 @@ export const loadScript = async (scriptId, userId) => {
     if (error) {
       console.error('❌ Error loading script:', error);
       if (error.code === 'PGRST116') {
-        return { success: false, error: 'Script not found' };
+        return { success: false, error: 'Story not found' };
       }
-      throw new Error(`Failed to load script: ${error.message}`);
+      throw new Error(`Failed to load story: ${error.message}`);
     }
     
     if (!script) {
       console.log('Script not found in Supabase');
-      return { success: false, error: 'Script not found' };
+      return { success: false, error: 'Story not found' };
     }
     
     console.log('✅ Script loaded from Supabase:', script.title);
     
-    // Transform script lines to match expected format
     const transformedLines = (script.script_lines || []).map(line => ({
       id: line.id,
       speaker: line.speaker_name,
@@ -263,8 +294,10 @@ export const loadScript = async (scriptId, userId) => {
       intensity: line.emotion_intensity,
       isGenerated: line.is_generated
     }));
-    
-    // Transform script to match expected format
+
+    // Parse metadata defensively — same logic as loadSavedScripts
+    const parsedMetadata = parseMetadata(script.metadata);
+
     const transformedScript = {
       id: script.id,
       title: script.title,
@@ -276,7 +309,7 @@ export const loadScript = async (scriptId, userId) => {
       audioDuration: script.audio_productions?.[0]?.audio_duration || null,
       audioStatus: script.audio_productions?.[0]?.status || null,
       metadata: {
-        ...(script.metadata || {}),
+        ...parsedMetadata,
         totalLines: transformedLines.length,
         charactersCount: [...new Set(transformedLines.map(line => line.speaker))].filter(Boolean).length,
         dialogueCount: transformedLines.filter(line => line.type === 'dialogue').length,
@@ -316,7 +349,7 @@ export const deleteScript = async (scriptId, userId) => {
     
     if (error) {
       console.error('❌ Error deleting script:', error);
-      throw new Error(`Failed to delete script: ${error.message}`);
+      throw new Error(`Failed to delete story: ${error.message}`);
     }
 
     console.log('✅ Script deleted successfully from Supabase');
