@@ -10,7 +10,7 @@ const pollScriptStatus = async (scriptId, startTime = Date.now()) => {
   const elapsed = Date.now() - startTime;
 
   if (elapsed > MAX_POLLING_TIME) {
-    throw new Error('Script generation polling timed out after 5 minutes');
+    throw new Error('Story generation polling timed out after 5 minutes');
   }
 
   const { data, error } = await supabase
@@ -54,7 +54,7 @@ const pollScriptStatus = async (scriptId, startTime = Date.now()) => {
 
   // Check if failed
   if (data.status === 'failed' || data.status === 'error') {
-    throw new Error(`Script generation failed: ${data.error_message || 'Unknown error'}`);
+    throw new Error(`Story generation failed: ${data.error_message || 'Unknown error'}`);
   }
 
   // Still processing, wait and poll again
@@ -66,7 +66,7 @@ export const generateAIScript = async (payload) => {
   console.log('🎬 Starting AI script generation...');
 
   if (!AI_SCRIPT_WEBHOOK) {
-    throw new Error('AI Script Generation webhook URL not configured');
+    throw new Error('AI Story Generation webhook URL not configured');
   }
 
   try {
@@ -139,7 +139,7 @@ export const generateAIScript = async (payload) => {
       };
     }
 
-    throw new Error('Invalid response from n8n workflow - no script or script_id');
+    throw new Error('Invalid response from n8n workflow - no story data returned');
 
   } catch (error) {
     console.error('❌ AI Script generation failed:', error);

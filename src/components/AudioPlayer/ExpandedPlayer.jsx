@@ -85,29 +85,30 @@ const ExpandedPlayer = ({ audioRef, title, scriptLines = [], timingMetadata = nu
   const pct = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="fixed inset-0 z-50 bg-sleep-950/40 backdrop-blur-sm flex flex-col justify-end">
+    <div className="fixed inset-0 z-50 bg-[#0b0705]/70 backdrop-blur-md flex flex-col justify-end">
 
       {/* Overlay tap to close */}
       <div className="flex-1" onClick={onCollapse} />
 
       {/* Panel */}
-      <div className="bg-white rounded-t-3xl border-t-2 border-cream-300/50 shadow-dream max-h-[85vh] flex flex-col animate-slide-up">
+      <div className="bg-[#1b120c]/96 rounded-t-[32px] border-t border-white/10 shadow-dream max-h-[85vh] flex flex-col animate-slide-up backdrop-blur-xl overflow-hidden">
         {/* Drag handle + collapse */}
         <div className="flex items-center justify-center pt-3 pb-1">
-          <button onClick={onCollapse} className="p-1 rounded-full">
-            <ChevronDown className="w-5 h-5 text-sleep-400" />
+          <button onClick={onCollapse} className="p-1.5 rounded-full text-cream-400/70 hover:text-cream-100 hover:bg-white/5 transition-colors">
+            <ChevronDown className="w-5 h-5" />
           </button>
         </div>
 
         {/* Title */}
         <div className="px-6 pb-3 text-center">
-          <h2 className="text-lg font-display font-bold text-sleep-900 truncate">{title || 'Now Playing'}</h2>
+          <div className="text-[11px] uppercase tracking-[0.16em] text-cream-400/55 font-body mb-1">Now Playing</div>
+          <h2 className="text-lg font-display font-bold text-cream-100 truncate">{title || 'Now Playing'}</h2>
         </div>
 
         {/* Progress */}
         <div className="px-6 mb-4">
           <div
-            className="w-full h-2.5 bg-cream-200 rounded-full cursor-pointer overflow-hidden"
+            className="w-full h-2.5 bg-white/10 rounded-full cursor-pointer overflow-hidden border border-white/5"
             onClick={(e) => {
               const rect = e.currentTarget.getBoundingClientRect();
               seekTo(((e.clientX - rect.left) / rect.width) * duration);
@@ -118,7 +119,7 @@ const ExpandedPlayer = ({ audioRef, title, scriptLines = [], timingMetadata = nu
               style={{ width: `${pct}%` }}
             />
           </div>
-          <div className="flex justify-between text-[10px] text-sleep-400 mt-1 font-body">
+          <div className="flex justify-between text-[10px] text-cream-400/60 mt-1 font-body">
             <span>{fmt(currentTime)}</span>
             <span>{fmt(duration)}</span>
           </div>
@@ -126,7 +127,7 @@ const ExpandedPlayer = ({ audioRef, title, scriptLines = [], timingMetadata = nu
 
         {/* Main controls */}
         <div className="flex items-center justify-center gap-5 mb-4">
-          <button onClick={skipBack} className="p-2.5 rounded-xl bg-cream-200 hover:bg-cream-300 text-sleep-600 active:scale-[0.95]">
+          <button onClick={skipBack} className="p-2.5 rounded-2xl bg-[#2b1d13]/88 hover:bg-[#342318] text-cream-200 border border-white/10 active:scale-[0.95] transition-all">
             <SkipBack className="w-5 h-5" />
           </button>
           <button
@@ -135,7 +136,7 @@ const ExpandedPlayer = ({ audioRef, title, scriptLines = [], timingMetadata = nu
           >
             {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6 ml-0.5" />}
           </button>
-          <button onClick={skipFwd} className="p-2.5 rounded-xl bg-cream-200 hover:bg-cream-300 text-sleep-600 active:scale-[0.95]">
+          <button onClick={skipFwd} className="p-2.5 rounded-2xl bg-[#2b1d13]/88 hover:bg-[#342318] text-cream-200 border border-white/10 active:scale-[0.95] transition-all">
             <SkipForward className="w-5 h-5" />
           </button>
         </div>
@@ -143,22 +144,22 @@ const ExpandedPlayer = ({ audioRef, title, scriptLines = [], timingMetadata = nu
         {/* Volume + Speed */}
         <div className="flex items-center justify-between px-6 mb-4">
           <div className="flex items-center gap-2">
-            <button onClick={() => setIsMuted(!isMuted)} className="p-1 text-sleep-400 hover:text-dream-glow">
+            <button onClick={() => setIsMuted(!isMuted)} className="p-1 text-cream-400/65 hover:text-dream-glow transition-colors">
               {isMuted ? <VolumeX className="w-4 h-4" /> : <Volume2 className="w-4 h-4" />}
             </button>
             <input
               type="range" min="0" max="1" step="0.1" value={volume}
               onChange={(e) => setVolume(parseFloat(e.target.value))}
-              className="w-20 h-1.5 bg-cream-200 rounded-full appearance-none accent-dream-glow"
+              className="w-20 h-1.5 bg-white/10 rounded-full appearance-none accent-dream-glow"
             />
-            <span className="text-[10px] text-sleep-400 w-8 font-body">{Math.round(volume * 100)}%</span>
+            <span className="text-[10px] text-cream-400/60 w-8 font-body">{Math.round(volume * 100)}%</span>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-sleep-400 font-body">Speed:</span>
+            <span className="text-xs text-cream-400/60 font-body">Speed:</span>
             <select
               value={playbackRate}
               onChange={(e) => setPlaybackRate(parseFloat(e.target.value))}
-              className="bg-cream-100/80 text-sleep-900 rounded-lg px-2 py-1 text-xs font-display font-semibold border-2 border-cream-300/60 focus:outline-none"
+              className="bg-[#24170f]/90 text-cream-100 rounded-xl px-2.5 py-1.5 text-xs font-display font-semibold border border-white/10 focus:outline-none focus:border-dream-glow/40"
             >
               <option value="0.5">0.5x</option>
               <option value="0.75">0.75x</option>
@@ -172,12 +173,12 @@ const ExpandedPlayer = ({ audioRef, title, scriptLines = [], timingMetadata = nu
 
         {/* Current line highlight */}
         {currentLineIndex >= 0 && scriptLines[currentLineIndex] && (
-          <div className="mx-6 p-3 bg-dream-stardust/20 rounded-2xl border border-dream-glow/20 mb-3">
+          <div className="mx-6 p-3 bg-dream-stardust/12 rounded-2xl border border-dream-glow/20 mb-3 shadow-glow-sm">
             <div className="text-[10px] text-dream-aurora mb-1 flex items-center font-display font-semibold">
               <div className="w-2 h-2 bg-dream-glow rounded-full mr-2 animate-pulse" />
               Now Playing — {scriptLines[currentLineIndex].speaker || scriptLines[currentLineIndex].speaker_name}
             </div>
-            <div className="text-sm text-sleep-900 leading-relaxed font-body">
+            <div className="text-sm text-cream-100 leading-relaxed font-body">
               {scriptLines[currentLineIndex].text || scriptLines[currentLineIndex].text_content}
             </div>
           </div>
@@ -185,20 +186,20 @@ const ExpandedPlayer = ({ audioRef, title, scriptLines = [], timingMetadata = nu
 
         {/* Script lines list */}
         {scriptLines.length > 0 && (
-          <div className="flex-1 overflow-y-auto px-6 pb-6 border-t-2 border-cream-300/30 pt-3">
-            <h4 className="text-xs font-display font-bold text-sleep-600 mb-2">📝 Story Lines ({scriptLines.length})</h4>
+          <div className="flex-1 overflow-y-auto px-6 pb-6 border-t border-white/10 pt-3 bg-[#140e0a]/48">
+            <h4 className="text-xs font-display font-bold text-cream-300/80 mb-2">📝 Story Lines ({scriptLines.length})</h4>
             <div className="space-y-1.5">
               {scriptLines.map((line, i) => (
                 <div
                   key={line.id || i}
                   onClick={() => handleLineClick(i)}
                   className={`p-2.5 rounded-xl cursor-pointer transition-all ${i === currentLineIndex
-                    ? 'bg-dream-stardust/30 border-2 border-dream-glow/30 text-sleep-900'
-                    : 'bg-cream-100/40 hover:bg-cream-100/80 text-sleep-600 border-2 border-transparent'
+                    ? 'bg-dream-stardust/18 border border-dream-glow/30 text-cream-100 shadow-glow-sm'
+                    : 'bg-[#24170f]/78 hover:bg-[#2b1d13]/88 text-cream-300 border border-white/8'
                     }`}
                 >
-                  <div className="text-[10px] text-sleep-400 mb-0.5 font-display font-semibold">{line.speaker || line.speaker_name}</div>
-                  <div className="text-xs font-body">{line.text || line.text_content}</div>
+                  <div className="text-[10px] text-cream-400/60 mb-0.5 font-display font-semibold">{line.speaker || line.speaker_name}</div>
+                  <div className="text-xs font-body leading-relaxed">{line.text || line.text_content}</div>
                 </div>
               ))}
             </div>

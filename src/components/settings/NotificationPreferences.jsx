@@ -84,23 +84,26 @@ export default function NotificationPreferences({ userId, childId, childName, on
 
   if (loading) {
     return (
-      <div className="min-h-full px-5 py-6 flex items-center justify-center">
+      <div className="min-h-full px-5 py-6 flex items-center justify-center text-cream-100">
         <div className="animate-spin text-2xl">⏳</div>
       </div>
     )
   }
 
   return (
-    <div className="min-h-full px-5 py-6 animate-fade-in">
+    <div className="min-h-full px-5 py-6 animate-fade-in text-cream-100">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="p-2 text-sleep-500 hover:text-sleep-800 transition-colors">
+        <button onClick={onBack} className="w-10 h-10 rounded-2xl bg-[#1b120c]/88 border border-white/10 flex items-center justify-center text-cream-200 hover:text-cream-100 hover:bg-[#24170f] transition-colors shrink-0">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-xl font-display font-bold text-sleep-900">Notifications</h1>
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.16em] text-cream-400/55 font-body">Notifications</div>
+          <h1 className="text-xl font-display font-bold text-cream-100">Preferences</h1>
+        </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="ml-auto flex items-center gap-1.5 px-4 py-2 bg-dream-glow hover:bg-dream-aurora text-white rounded-xl font-display font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-60"
+          className="ml-auto flex items-center gap-1.5 px-4 py-2.5 bg-dream-glow hover:bg-dream-aurora text-white rounded-2xl font-display font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-60 shadow-card"
         >
           {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
           {saving ? 'Saving…' : saved ? 'Saved' : 'Save'}
@@ -108,84 +111,84 @@ export default function NotificationPreferences({ userId, childId, childName, on
       </div>
 
       <div className="max-w-lg mx-auto space-y-4">
-        <p className="text-xs text-sleep-500 font-body">Notification times for {childName}</p>
+        <div className="rounded-[28px] border border-white/10 bg-[#1b120c]/82 px-4 py-4 shadow-card backdrop-blur-md">
+          <p className="text-sm text-cream-300/80 font-body leading-relaxed">Choose when DreamStation should nudge you for story time, morning reflections, and weekly check-ins for {childName}.</p>
+        </div>
 
-        {/* Push toggle */}
         {isPushSupported() && (
-          <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card">
+          <div className="glass-card-solid p-5 shadow-card">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <Bell className={`w-5 h-5 ${pushEnabled ? 'text-dream-glow' : 'text-sleep-400'}`} />
+                <div className="w-11 h-11 rounded-2xl border border-white/10 bg-[#140e0a]/78 flex items-center justify-center">
+                  <Bell className={`w-5 h-5 ${pushEnabled ? 'text-dream-glow' : 'text-cream-400/55'}`} />
+                </div>
                 <div>
-                  <p className="text-sm font-display font-semibold text-sleep-900">Push Notifications</p>
-                  <p className="text-xs text-sleep-500 font-body">{pushEnabled ? 'Enabled' : 'Disabled'}</p>
+                  <p className="text-sm font-display font-semibold text-cream-100">Push Notifications</p>
+                  <p className="text-xs text-cream-300/70 font-body">{pushEnabled ? 'Enabled' : 'Disabled'}</p>
                 </div>
               </div>
               <button
                 onClick={handleTogglePush}
-                className={`w-12 h-7 rounded-full transition-all duration-200 relative ${pushEnabled ? 'bg-dream-glow' : 'bg-cream-300'}`}
+                className={`w-12 h-7 rounded-full transition-all duration-200 relative border ${pushEnabled ? 'bg-dream-glow border-dream-glow/40' : 'bg-[#140e0a] border-white/10'}`}
               >
                 <div className={`w-5 h-5 rounded-full bg-white shadow-sm absolute top-1 transition-all duration-200 ${pushEnabled ? 'left-6' : 'left-1'}`} />
               </button>
             </div>
             {pushError && (
-              <p className="text-xs text-danger font-body mt-2">{pushError}</p>
+              <p className="text-xs text-[#F2A180] font-body mt-3">{pushError}</p>
             )}
           </div>
         )}
 
-        {/* Evening reminder */}
-        <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card space-y-3">
-          <h2 className="text-base font-display font-bold text-sleep-900">Evening Reminder</h2>
-          <p className="text-xs text-sleep-500 font-body">When should we remind you it's story time?</p>
+        <div className="glass-card-solid p-5 shadow-card space-y-3">
+          <h2 className="text-base font-display font-bold text-cream-100">Evening Reminder</h2>
+          <p className="text-xs text-cream-300/70 font-body">When should we remind you it's story time?</p>
           <input
             type="time"
             value={eveningTime}
             min="17:00"
             max="21:00"
             onChange={e => setEveningTime(e.target.value)}
-            className="w-full px-4 py-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+            className="input-field"
           />
         </div>
 
-        {/* Morning reflection */}
-        <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card space-y-3">
-          <h2 className="text-base font-display font-bold text-sleep-900">Morning Reflection</h2>
-          <p className="text-xs text-sleep-500 font-body">When do you want to receive last night's observations?</p>
+        <div className="glass-card-solid p-5 shadow-card space-y-3">
+          <h2 className="text-base font-display font-bold text-cream-100">Morning Reflection</h2>
+          <p className="text-xs text-cream-300/70 font-body">When do you want to receive last night's observations?</p>
           <input
             type="time"
             value={morningTime}
             min="06:00"
             max="11:00"
             onChange={e => setMorningTime(e.target.value)}
-            className="w-full px-4 py-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+            className="input-field"
           />
         </div>
 
-        {/* Weekly brief */}
-        <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card space-y-3">
-          <h2 className="text-base font-display font-bold text-sleep-900">Weekly Brief</h2>
+        <div className="glass-card-solid p-5 shadow-card space-y-3">
+          <h2 className="text-base font-display font-bold text-cream-100">Weekly Brief</h2>
           <div>
-            <p className="text-xs text-sleep-500 font-body mb-2">Which day works best?</p>
+            <p className="text-xs text-cream-300/70 font-body mb-2">Which day works best?</p>
             <div className="grid grid-cols-4 gap-1.5">
               {DAYS.map(day => (
                 <button key={day} onClick={() => setBriefDay(day)}
-                  className={`px-2 py-2 rounded-xl text-xs font-display font-semibold capitalize transition-all ${
-                    briefDay === day ? 'bg-dream-glow text-white' : 'bg-cream-100/80 border border-cream-300/60 text-sleep-600'
+                  className={`px-2 py-2.5 rounded-2xl text-xs font-display font-semibold capitalize transition-all border ${
+                    briefDay === day ? 'bg-dream-glow text-white border-dream-glow/30 shadow-card' : 'bg-[#140e0a]/78 border-white/10 text-cream-300/78 hover:border-dream-glow/20'
                   }`}
                 >{day.substring(0, 3)}</button>
               ))}
             </div>
           </div>
           <div>
-            <p className="text-xs text-sleep-500 font-body mb-2">What time?</p>
+            <p className="text-xs text-cream-300/70 font-body mb-2">What time?</p>
             <input
               type="time"
               value={briefTime}
               min="18:00"
               max="21:00"
               onChange={e => setBriefTime(e.target.value)}
-              className="w-full px-4 py-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+              className="input-field"
             />
           </div>
         </div>

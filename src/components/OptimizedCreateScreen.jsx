@@ -215,12 +215,12 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
   const isReadyToGenerate = storyContent.trim() && characters.some(char => char.name.trim());
 
   return (
-    <div className="min-h-full p-5 animate-fade-in">
+    <div className="min-h-full px-5 sm:px-6 py-6 sm:py-8 animate-fade-in text-cream-100">
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <button
           onClick={onBack}
-          className="flex items-center px-3 py-2 text-sleep-500 hover:text-sleep-800 rounded-xl transition-all duration-200 font-display font-semibold text-sm"
+          className="flex items-center px-3 py-2 text-cream-300/75 hover:text-cream-100 rounded-xl transition-all duration-200 font-display font-semibold text-sm"
         >
           <ArrowLeft className="w-5 h-5 mr-2" />
           Back
@@ -231,19 +231,19 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
         <div className="w-20"></div>
       </div>
 
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="max-w-3xl mx-auto space-y-5 sm:space-y-6">
         {/* AI Suggestions — Carousel */}
         {activeChildId && (
-          <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card">
+          <div className="bg-[#24170f]/80 backdrop-blur-md border border-white/10 rounded-[24px] p-5 sm:p-6 shadow-card">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="flex items-center gap-2 text-lg font-display font-bold text-sleep-900">
+              <h2 className="flex items-center gap-2 text-lg font-display font-bold text-cream-100">
                 <Sparkles className="h-5 w-5 text-dream-glow" />
                 {childName ? `For ${childName} tonight` : 'Story ideas'}
               </h2>
               <button
                 onClick={() => { setCarouselIndex(0); fetchSuggestions(); }}
                 disabled={suggestionsLoading}
-                className="p-2 text-sleep-400 hover:text-dream-glow transition-colors disabled:opacity-40"
+                className="p-2 text-cream-400/60 hover:text-dream-glow transition-colors disabled:opacity-40"
                 title="Get new suggestions"
               >
                 <RefreshCw className={`w-4 h-4 ${suggestionsLoading ? 'animate-spin' : ''}`} />
@@ -251,11 +251,11 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
             </div>
 
             {suggestionsLoading ? (
-              <div className="p-6 border-2 border-dream-glow/20 rounded-2xl bg-dream-stardust/10 text-center">
+              <div className="p-6 border border-dream-glow/20 rounded-2xl bg-[#1b120c]/70 text-center">
                 <div className="w-10 h-10 mx-auto mb-4 rounded-full bg-dream-glow/20 flex items-center justify-center">
                   <Sparkles className="w-5 h-5 text-dream-glow animate-pulse" />
                 </div>
-                <p className="text-sm font-display font-semibold text-sleep-700 transition-opacity duration-500" key={loadingMsgIndex}>
+                <p className="text-sm font-display font-semibold text-cream-200 transition-opacity duration-500" key={loadingMsgIndex}>
                   {loadingMessages[loadingMsgIndex]}
                 </p>
                 <div className="flex justify-center gap-1 mt-4">
@@ -271,15 +271,15 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
             ) : suggestions.length > 0 ? (
               <div>
                 {/* Card */}
-                <div className="overflow-hidden rounded-2xl border-2 border-cream-300/60">
+                <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#1b120c]/55">
                   <div
                     className="flex transition-transform duration-300 ease-out"
                     style={{ transform: `translateX(-${carouselIndex * 100}%)` }}
                   >
                     {suggestions.map((s, i) => (
                       <div key={i} className="w-full shrink-0 p-5">
-                        <div className="font-display font-bold text-base text-sleep-900 mb-2">{s.title}</div>
-                        <p className="text-sm text-sleep-600 font-body leading-relaxed mb-3">{s.concept}</p>
+                        <div className="font-display font-bold text-base text-cream-100 mb-2">{s.title}</div>
+                        <p className="text-sm text-cream-300/80 font-body leading-relaxed mb-3">{s.concept}</p>
                         {s.hook && (
                           <p className="text-xs text-dream-aurora font-body italic leading-relaxed mb-3 pl-3 border-l-2 border-dream-glow/30">
                             "{s.hook}"
@@ -310,7 +310,7 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
                   <button
                     onClick={() => setCarouselIndex(Math.max(0, carouselIndex - 1))}
                     disabled={carouselIndex === 0}
-                    className="px-3 py-1.5 text-xs font-display font-semibold text-sleep-500 hover:text-sleep-800 disabled:opacity-30 transition-colors"
+                    className="px-3 py-1.5 text-xs font-display font-semibold text-cream-300/75 hover:text-cream-100 disabled:opacity-30 transition-colors"
                   >
                     ← Prev
                   </button>
@@ -319,14 +319,14 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
                       <button
                         key={i}
                         onClick={() => setCarouselIndex(i)}
-                        className={`w-2 h-2 rounded-full transition-all duration-200 ${i === carouselIndex ? 'bg-dream-glow scale-125' : 'bg-cream-300/60 hover:bg-cream-400'}`}
+                        className={`w-2 h-2 rounded-full transition-all duration-200 ${i === carouselIndex ? 'bg-dream-glow scale-125' : 'bg-white/20 hover:bg-white/35'}`}
                       />
                     ))}
                   </div>
                   <button
                     onClick={() => setCarouselIndex(Math.min(suggestions.length - 1, carouselIndex + 1))}
                     disabled={carouselIndex >= suggestions.length - 1}
-                    className="px-3 py-1.5 text-xs font-display font-semibold text-sleep-500 hover:text-sleep-800 disabled:opacity-30 transition-colors"
+                    className="px-3 py-1.5 text-xs font-display font-semibold text-cream-300/75 hover:text-cream-100 disabled:opacity-30 transition-colors"
                   >
                     Next →
                   </button>
@@ -337,36 +337,36 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
         )}
 
         {/* Classic Stories — collapsed by default, carousel inside */}
-        <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl shadow-card overflow-hidden">
+        <div className="bg-[#24170f]/80 backdrop-blur-md border border-white/10 rounded-[24px] shadow-card overflow-hidden">
           <button
             onClick={() => setShowClassicTemplates(!showClassicTemplates)}
             className="w-full flex items-center justify-between p-5 text-left"
           >
-            <h2 className="flex items-center gap-2 text-sm font-display font-semibold text-sleep-600">
+            <h2 className="flex items-center gap-2 text-sm font-display font-semibold text-cream-300/80">
               Classic Stories
             </h2>
             {showClassicTemplates ? (
-              <ChevronUp className="w-4 h-4 text-sleep-400" />
+              <ChevronUp className="w-4 h-4 text-cream-400/60" />
             ) : (
-              <ChevronDown className="w-4 h-4 text-sleep-400" />
+              <ChevronDown className="w-4 h-4 text-cream-400/60" />
             )}
           </button>
           {showClassicTemplates && (() => {
             const templates = Object.entries(QUICKSTART_TEMPLATES);
             return (
               <div className="px-5 pb-5 -mt-2">
-                <div className="overflow-hidden rounded-2xl border-2 border-cream-300/60">
+                <div className="overflow-hidden rounded-2xl border border-white/10 bg-[#1b120c]/55">
                   <div
                     className="flex transition-transform duration-300 ease-out"
                     style={{ transform: `translateX(-${classicIndex * 100}%)` }}
                   >
                     {templates.map(([key, template]) => (
                       <div key={key} className="w-full shrink-0 p-5">
-                        <div className="font-display font-bold text-base text-sleep-900 mb-2">{template.name}</div>
-                        <p className="text-sm text-sleep-600 font-body leading-relaxed mb-3">{template.concept}</p>
+                        <div className="font-display font-bold text-base text-cream-100 mb-2">{template.name}</div>
+                        <p className="text-sm text-cream-300/80 font-body leading-relaxed mb-3">{template.concept}</p>
                         <div className="flex flex-wrap gap-1.5 mb-4">
                           {template.characters.map((c, ci) => (
-                            <span key={ci} className="px-2 py-0.5 rounded-full text-[10px] font-display font-semibold bg-cream-200/80 text-sleep-500">
+                            <span key={ci} className="px-2 py-0.5 rounded-full text-[10px] font-display font-semibold bg-white/10 text-cream-200">
                               {c.name}
                             </span>
                           ))}
@@ -390,7 +390,7 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
                   <button
                     onClick={() => setClassicIndex(Math.max(0, classicIndex - 1))}
                     disabled={classicIndex === 0}
-                    className="px-3 py-1.5 text-xs font-display font-semibold text-sleep-500 hover:text-sleep-800 disabled:opacity-30 transition-colors"
+                    className="px-3 py-1.5 text-xs font-display font-semibold text-cream-300/75 hover:text-cream-100 disabled:opacity-30 transition-colors"
                   >
                     ← Prev
                   </button>
@@ -399,14 +399,14 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
                       <button
                         key={i}
                         onClick={() => setClassicIndex(i)}
-                        className={`w-2 h-2 rounded-full transition-all duration-200 ${i === classicIndex ? 'bg-dream-glow scale-125' : 'bg-cream-300/60 hover:bg-cream-400'}`}
+                        className={`w-2 h-2 rounded-full transition-all duration-200 ${i === classicIndex ? 'bg-dream-glow scale-125' : 'bg-white/20 hover:bg-white/35'}`}
                       />
                     ))}
                   </div>
                   <button
                     onClick={() => setClassicIndex(Math.min(templates.length - 1, classicIndex + 1))}
                     disabled={classicIndex >= templates.length - 1}
-                    className="px-3 py-1.5 text-xs font-display font-semibold text-sleep-500 hover:text-sleep-800 disabled:opacity-30 transition-colors"
+                    className="px-3 py-1.5 text-xs font-display font-semibold text-cream-300/75 hover:text-cream-100 disabled:opacity-30 transition-colors"
                   >
                     Next →
                   </button>
@@ -416,29 +416,29 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
           })()}
         </div>
 
-        {/* Generate Script Section */}
-        <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card space-y-5">
-          <h2 className="flex items-center gap-2 text-lg font-display font-bold text-sleep-900">
+        {/* Generate Story Section */}
+        <div className="bg-[#24170f]/80 backdrop-blur-md border border-white/10 rounded-[24px] p-5 sm:p-6 shadow-card space-y-5">
+          <h2 className="flex items-center gap-2 text-lg font-display font-bold text-cream-100">
             <Zap className="h-5 w-5 text-dream-glow" />
-            Generate Script
+            Generate Story
           </h2>
 
           {/* Story Input */}
           <div>
-            <label htmlFor="story-content" className="block text-sm font-display font-semibold text-sleep-600 mb-2">Story Concept</label>
+            <label htmlFor="story-content" className="block text-sm font-display font-semibold text-cream-300/80 mb-2">Story Concept</label>
             <textarea
               id="story-content"
               placeholder="Describe your story concept, plot, and key events..."
               value={storyContent}
               onChange={(e) => setStoryContent(e.target.value)}
-              className="w-full min-h-[120px] p-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl resize-none text-sleep-900 placeholder-sleep-400 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+              className="w-full min-h-[140px] p-4 bg-[#140e0a]/90 border-2 border-white/10 rounded-2xl resize-none text-cream-100 placeholder:text-cream-400/50 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
             />
           </div>
 
           {/* Characters */}
           <div>
             <div className="flex items-center justify-between mb-3">
-              <label className="flex items-center gap-2 text-sm font-display font-semibold text-sleep-600">
+              <label className="flex items-center gap-2 text-sm font-display font-semibold text-cream-300/80">
                 <Users className="w-4 h-4 text-dream-glow" />
                 Characters (up to 10)
               </label>
@@ -446,7 +446,7 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
                 type="button"
                 onClick={addCharacter}
                 disabled={characters.length >= 10}
-                className="flex items-center gap-1 px-3 py-1.5 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-xs font-display font-semibold text-sleep-600 hover:border-dream-glow/30 disabled:opacity-40 transition-all"
+                className="flex items-center gap-1 px-3 py-1.5 bg-[#1b120c]/85 border border-white/10 rounded-xl text-xs font-display font-semibold text-cream-200 hover:border-dream-glow/30 disabled:opacity-40 transition-all"
               >
                 <Plus className="h-3.5 w-3.5" />
                 Add
@@ -455,19 +455,19 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
 
             <div className="space-y-3">
               {characters.map((character, index) => (
-                <div key={index} className="flex gap-3 items-start">
+                <div key={index} className="flex gap-3 items-start rounded-2xl border border-white/8 bg-[#1b120c]/45 p-3">
                   <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-3">
                     <input
                       placeholder="Character name"
                       value={character.name}
                       onChange={(e) => updateCharacter(index, 'name', e.target.value)}
-                      className="w-full p-2.5 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 placeholder-sleep-400 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+                      className="w-full p-3 bg-[#140e0a]/90 border-2 border-white/10 rounded-xl text-cream-100 placeholder:text-cream-400/50 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
                     />
                     <input
                       placeholder="Character description"
                       value={character.description}
                       onChange={(e) => updateCharacter(index, 'description', e.target.value)}
-                      className="w-full p-2.5 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 placeholder-sleep-400 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+                      className="w-full p-3 bg-[#140e0a]/90 border-2 border-white/10 rounded-xl text-cream-100 placeholder:text-cream-400/50 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
                     />
                   </div>
                   {characters.length > 1 && (
@@ -486,25 +486,25 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
 
           {/* Anything to weave in? — consolidated field */}
           <div>
-            <label htmlFor="parent-note" className="block text-sm font-display font-semibold text-sleep-600 mb-2">
-              Anything to weave into tonight's story?
+            <label htmlFor="parent-note" className="block text-sm font-display font-semibold text-cream-300/80 mb-2">
+              Anything to weave in?
             </label>
             <textarea
               id="parent-note"
               value={parentNote}
               onChange={(e) => setParentNote(e.target.value)}
               placeholder="Optional — mood, big day, specific requests, anything on their mind…"
-              rows={2}
-              className="w-full p-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl resize-none text-sleep-900 placeholder-sleep-400 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+              rows={3}
+              className="w-full p-4 bg-[#140e0a]/90 border-2 border-white/10 rounded-2xl resize-none text-cream-100 placeholder:text-cream-400/50 text-sm font-body focus:border-dream-glow/50 focus:outline-none transition-all"
             />
           </div>
 
           {/* Ready to Generate */}
-          <div className="text-center bg-cream-100/60 p-4 rounded-2xl border-2 border-cream-300/40">
-            <div className="text-sm text-sleep-600 font-body">
+          <div className="text-center bg-[#1b120c]/80 p-4 rounded-2xl border border-white/10">
+            <div className="text-sm text-cream-200 font-body">
               Ready to generate a ~10 minute audio story
             </div>
-            <div className="text-xs text-sleep-400 mt-1">
+            <div className="text-xs text-cream-400/65 mt-1">
               Cost: 1 credit per generation
             </div>
           </div>
@@ -514,25 +514,25 @@ const OptimizedCreateScreen = ({ onBack, onGenerate, isGenerating = false, activ
             onClick={handleGenerate}
             disabled={!isReadyToGenerate || isGenerating}
             className={`w-full py-3.5 rounded-2xl font-display font-bold text-sm flex items-center justify-center gap-2 transition-all ${!isReadyToGenerate || isGenerating
-                ? 'bg-cream-300/50 text-sleep-400 cursor-not-allowed'
+                ? 'bg-white/10 text-cream-400/60 cursor-not-allowed'
                 : 'bg-dream-glow text-white shadow-glow-sm hover:bg-dream-aurora active:scale-[0.98]'
               }`}
           >
             {isGenerating ? (
               <>
-                <div className="animate-spin rounded-full h-4 w-4 border-2 border-cream-300 border-t-white"></div>
-                Generating Script…
+                <div className="animate-spin rounded-full h-4 w-4 border-2 border-cream-300/60 border-t-white"></div>
+                Generating Story…
               </>
             ) : (
               <>
                 <Wand2 className="h-4 w-4" />
-                Generate 10-Minute Script ✨
+                Generate 10-Minute Story ✨
               </>
             )}
           </button>
 
           {!isReadyToGenerate && (
-            <div className="text-xs text-sleep-400 text-center font-body bg-cream-100/40 p-3 rounded-xl">
+            <div className="text-xs text-cream-400/65 text-center font-body bg-[#1b120c]/60 p-3 rounded-xl border border-white/8">
               Please add a story concept and at least one character to continue.
             </div>
           )}

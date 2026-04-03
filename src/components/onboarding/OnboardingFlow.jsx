@@ -69,7 +69,7 @@ function ProgressBar({ current, total }) {
         <div
           key={i}
           className={`h-1.5 flex-1 rounded-full transition-all duration-300 ${
-            i < current ? 'bg-dream-glow' : i === current ? 'bg-dream-glow/50' : 'bg-cream-300/60'
+            i < current ? 'bg-dream-glow' : i === current ? 'bg-dream-glow/45' : 'bg-white/14'
           }`}
         />
       ))}
@@ -85,18 +85,18 @@ function CheckItem({ label, checked, onChange }) {
     <button
       type="button"
       onClick={onChange}
-      className={`w-full text-left px-4 py-3 rounded-2xl border-2 transition-all duration-200 flex items-center gap-3 ${
+      className={`w-full text-left px-4 py-3 rounded-2xl border transition-all duration-200 flex items-center gap-3 ${
         checked
-          ? 'border-dream-glow/50 bg-dream-stardust/30'
-          : 'border-cream-300/60 bg-white/60 hover:border-dream-glow/20'
+          ? 'border-dream-glow/35 bg-dream-glow/10 shadow-card'
+          : 'border-white/10 bg-[#140e0a]/78 hover:border-dream-glow/20'
       }`}
     >
-      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${
-        checked ? 'bg-dream-glow border-dream-glow' : 'border-cream-400'
+      <div className={`w-5 h-5 rounded-md border flex items-center justify-center shrink-0 transition-all ${
+        checked ? 'bg-dream-glow border-dream-glow' : 'border-white/20 bg-[#1b120c]'
       }`}>
         {checked && <Check className="w-3 h-3 text-white" />}
       </div>
-      <span className="text-sm text-sleep-800 font-body">{label}</span>
+      <span className="text-sm text-cream-200 font-body">{label}</span>
     </button>
   )
 }
@@ -109,10 +109,10 @@ function RadioItem({ label, selected, onChange }) {
     <button
       type="button"
       onClick={onChange}
-      className={`px-4 py-3 rounded-2xl border-2 transition-all duration-200 text-sm font-body ${
+      className={`px-4 py-3 rounded-2xl border transition-all duration-200 text-sm font-body ${
         selected
-          ? 'border-dream-glow bg-dream-stardust/30 text-sleep-900'
-          : 'border-cream-300/60 bg-white/60 text-sleep-600 hover:border-dream-glow/20'
+          ? 'border-dream-glow/35 bg-dream-glow/10 text-cream-100 shadow-card'
+          : 'border-white/10 bg-[#140e0a]/78 text-cream-300/78 hover:border-dream-glow/20'
       }`}
     >
       {label}
@@ -126,10 +126,10 @@ function RadioItem({ label, selected, onChange }) {
 function SliderField({ label, hint, value, onChange }) {
   return (
     <div className="space-y-2">
-      <label className="block text-sm font-display font-semibold text-sleep-800">{label}</label>
-      <p className="text-xs text-sleep-500 font-body">{hint}</p>
+      <label className="block text-sm font-display font-semibold text-cream-100">{label}</label>
+      <p className="text-xs text-cream-300/70 font-body">{hint}</p>
       <div className="flex items-center gap-3">
-        <span className="text-xs text-sleep-400 font-body w-4">1</span>
+        <span className="text-xs text-cream-400/55 font-body w-4">1</span>
         <input
           type="range"
           min="1"
@@ -138,7 +138,7 @@ function SliderField({ label, hint, value, onChange }) {
           onChange={(e) => onChange(parseInt(e.target.value))}
           className="flex-1 accent-dream-glow"
         />
-        <span className="text-xs text-sleep-400 font-body w-4">10</span>
+        <span className="text-xs text-cream-400/55 font-body w-4">10</span>
         <span className="w-8 text-center text-sm font-display font-bold text-dream-glow">{value}</span>
       </div>
     </div>
@@ -153,21 +153,24 @@ function WelcomeScreen() {
   return (
     <div className="flex flex-col items-center text-center px-2">
       <motion.div
-        className="w-20 h-20 bg-white rounded-3xl shadow-soft border-2 border-cream-300/50 flex items-center justify-center mb-6"
+        className="w-20 h-20 bg-[#f8f1e7] rounded-[28px] shadow-card border border-white/40 flex items-center justify-center mb-6"
         animate={{ y: [0, -5, 0] }}
         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
       >
         <Moon className="w-10 h-10 text-dream-glow" />
       </motion.div>
-      <h1 className="text-2xl font-display font-bold text-sleep-900 mb-4">Let's get to know your child</h1>
-      <div className="text-sm text-sleep-600 font-body space-y-3 max-w-sm mb-8">
+      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#1b120c]/88 px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-cream-400/65 font-body shadow-card backdrop-blur-md mb-4">
+        <span>Full Programme</span>
+      </div>
+      <h1 className="text-3xl font-display font-bold text-cream-100 mb-4">Let's get to know your child</h1>
+      <div className="text-sm text-cream-300/78 font-body space-y-3 max-w-sm mb-8 leading-relaxed">
         <p>
           We're going to ask you a few things about your child so the stories feel like they were made just for them — and so we can help you notice what's on their mind over the weeks ahead.
         </p>
         <p>
           The more honest you are here the more useful this will be. There are no wrong answers, and you can update everything later in Settings.
         </p>
-        <p className="text-sleep-400">This takes about 10 minutes.</p>
+        <p className="text-cream-400/60">This takes about 10 minutes.</p>
       </div>
       <button
         onClick={nextScreen}
@@ -191,28 +194,28 @@ function Section1Screen() {
     <div className="space-y-5">
       <div className="flex items-center gap-2 mb-1">
         <Heart className="w-5 h-5 text-dream-glow" />
-        <h2 className="text-xl font-display font-bold text-sleep-900">Who is your child?</h2>
+        <h2 className="text-xl font-display font-bold text-cream-100">Who is your child?</h2>
       </div>
-      <p className="text-sm text-sleep-600 font-body">
+      <p className="text-sm text-cream-300/78 font-body leading-relaxed">
         Let's start with the basics. We'll use these to build a world that feels like it was made just for them.
       </p>
 
       {/* Name */}
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">What's their name?</label>
-        <p className="text-xs text-sleep-400 font-body mb-2">First name only — this appears in every story</p>
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">What's their name?</label>
+        <p className="text-xs text-cream-400/60 font-body mb-2">First name only — this appears in every story</p>
         <input
           type="text"
           value={childName}
           onChange={(e) => setField('childName', e.target.value)}
           placeholder="First name"
-          className="w-full px-4 py-3 bg-white/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 placeholder-sleep-400 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+          className="input-field"
         />
       </div>
 
       {/* Age */}
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">How old are they?</label>
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">How old are they?</label>
         <input
           type="number"
           min="3"
@@ -220,17 +223,17 @@ function Section1Screen() {
           value={childAge}
           onChange={(e) => setField('childAge', e.target.value)}
           placeholder="Age (3–12)"
-          className="w-full px-4 py-3 bg-white/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 placeholder-sleep-400 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+          className="input-field"
         />
         {ageOutOfRange && (
-          <p className="text-xs text-danger mt-1 font-body">DreamStation works best for ages 3–12</p>
+          <p className="text-xs text-[#F2A180] mt-1 font-body">DreamStation works best for ages 3–12</p>
         )}
       </div>
 
       {/* Gender */}
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">Are they a girl, boy, or something else?</label>
-        <p className="text-xs text-sleep-400 font-body mb-2">This helps us get pronouns right in the stories</p>
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">Are they a girl, boy, or something else?</label>
+        <p className="text-xs text-cream-400/60 font-body mb-2">This helps us get pronouns right in the stories</p>
         <div className="grid grid-cols-2 gap-2">
           {GENDER_OPTIONS.map(opt => (
             <RadioItem
@@ -245,10 +248,10 @@ function Section1Screen() {
 
       {/* Parent description */}
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">
           Describe them in a sentence — the way you'd describe them to someone who'd never met them.
         </label>
-        <p className="text-xs text-sleep-400 font-body mb-2">
+        <p className="text-xs text-cream-400/60 font-body mb-2 leading-relaxed">
           e.g. "She's incredibly imaginative but finds the world a bit overwhelming sometimes" or "He's the funniest kid in the room until he's not, and then everything falls apart"
         </p>
         <textarea
@@ -256,10 +259,10 @@ function Section1Screen() {
           onChange={(e) => setField('parentDescription', e.target.value)}
           placeholder="Tell us about them..."
           rows={3}
-          className="w-full px-4 py-3 bg-white/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 placeholder-sleep-400 font-body resize-none focus:border-dream-glow/50 focus:outline-none transition-all"
+          className="input-field resize-none"
         />
         {parentDescription && parentDescription.length < 10 && (
-          <p className="text-xs text-sleep-400 mt-1 font-body">A bit more would really help us — even one full sentence</p>
+          <p className="text-xs text-cream-400/60 mt-1 font-body">A bit more would really help us — even one full sentence</p>
         )}
       </div>
     </div>
@@ -276,16 +279,16 @@ function Section2Screen() {
     <div className="space-y-5">
       <div className="flex items-center gap-2 mb-1">
         <Brain className="w-5 h-5 text-dream-glow" />
-        <h2 className="text-xl font-display font-bold text-sleep-900">How does their nervous system work?</h2>
+        <h2 className="text-xl font-display font-bold text-cream-100">How does their nervous system work?</h2>
       </div>
-      <div className="text-sm text-sleep-600 font-body space-y-2">
+      <div className="text-sm text-cream-300/78 font-body space-y-2 leading-relaxed">
         <p>Every child's nervous system is different. This helps us understand how yours experiences the world — so the stories and the observations we share with you actually make sense for them.</p>
         <p>Tick anything that feels familiar. You don't need a diagnosis.</p>
       </div>
 
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-2">Do any of these sound like your child?</label>
-        <p className="text-xs text-sleep-400 font-body mb-3">Select all that apply</p>
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-2">Do any of these sound like your child?</label>
+        <p className="text-xs text-cream-400/60 font-body mb-3">Select all that apply</p>
         <div className="space-y-2">
           {NEURO_OPTIONS.map(option => (
             <CheckItem
@@ -299,16 +302,16 @@ function Section2Screen() {
       </div>
 
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">
           Anything else you'd like us to know about how they experience the world?
         </label>
-        <p className="text-xs text-sleep-400 font-body mb-2">Optional — anything not covered above</p>
+        <p className="text-xs text-cream-400/60 font-body mb-2">Optional — anything not covered above</p>
         <textarea
           value={neuroNotes}
           onChange={(e) => setField('neuroNotes', e.target.value)}
           placeholder="Anything else..."
           rows={3}
-          className="w-full px-4 py-3 bg-white/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 placeholder-sleep-400 font-body resize-none focus:border-dream-glow/50 focus:outline-none transition-all"
+          className="input-field resize-none"
         />
       </div>
     </div>
@@ -325,17 +328,17 @@ function Section3Screen() {
     <div className="space-y-5">
       <div className="flex items-center gap-2 mb-1">
         <Bed className="w-5 h-5 text-dream-glow" />
-        <h2 className="text-xl font-display font-bold text-sleep-900">Tell us about bedtime</h2>
+        <h2 className="text-xl font-display font-bold text-cream-100">Tell us about bedtime</h2>
       </div>
-      <p className="text-sm text-sleep-600 font-body">
+      <p className="text-sm text-cream-300/78 font-body leading-relaxed">
         Honestly — what does a hard bedtime look like in your house? Don't worry, we've heard it all.
       </p>
 
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">
           When bedtime is difficult, what does that usually look like?
         </label>
-        <p className="text-xs text-sleep-400 font-body mb-2">
+        <p className="text-xs text-cream-400/60 font-body mb-2 leading-relaxed">
           e.g. "She finds a reason to get up every five minutes" or "He completely loses it if the routine changes even slightly" or "She just cannot switch her brain off"
         </p>
         <textarea
@@ -343,12 +346,12 @@ function Section3Screen() {
           onChange={(e) => setField('bedtimeDescription', e.target.value)}
           placeholder="What does a hard bedtime look like..."
           rows={3}
-          className="w-full px-4 py-3 bg-white/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 placeholder-sleep-400 font-body resize-none focus:border-dream-glow/50 focus:outline-none transition-all"
+          className="input-field resize-none"
         />
       </div>
 
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-2">
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-2">
           How often does your child wake in the night?
         </label>
         <div className="space-y-2">
@@ -376,17 +379,17 @@ function Section4Screen() {
     <div className="space-y-5">
       <div className="flex items-center gap-2 mb-1">
         <Shield className="w-5 h-5 text-dream-glow" />
-        <h2 className="text-xl font-display font-bold text-sleep-900">What's on their mind?</h2>
+        <h2 className="text-xl font-display font-bold text-cream-100">What's on their mind?</h2>
       </div>
-      <p className="text-sm text-sleep-600 font-body">
+      <p className="text-sm text-cream-300/78 font-body leading-relaxed">
         Children often show us what they're worried about before they tell us. This helps us notice when those themes come up in their stories.
       </p>
 
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">
           Does your child worry about any of these? Tick anything that feels true.
         </label>
-        <p className="text-xs text-sleep-400 font-body mb-3">You know them best — go with your gut</p>
+        <p className="text-xs text-cream-400/60 font-body mb-3">You know them best — go with your gut</p>
         <div className="space-y-2">
           {FEAR_OPTIONS.map(option => (
             <CheckItem
@@ -400,10 +403,10 @@ function Section4Screen() {
       </div>
 
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">
           Is there anything happening in their life right now that we should know about?
         </label>
-        <p className="text-xs text-sleep-400 font-body mb-2">
+        <p className="text-xs text-cream-400/60 font-body mb-2 leading-relaxed">
           e.g. "She's nervous about a big family event next week" or "His best friend just moved schools" or "We have a new baby at home". Big things and small things both count.
         </p>
         <textarea
@@ -411,7 +414,7 @@ function Section4Screen() {
           onChange={(e) => setField('currentStressors', e.target.value)}
           placeholder="Anything happening right now... (optional)"
           rows={3}
-          className="w-full px-4 py-3 bg-white/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 placeholder-sleep-400 font-body resize-none focus:border-dream-glow/50 focus:outline-none transition-all"
+          className="input-field resize-none"
         />
       </div>
     </div>
@@ -428,18 +431,18 @@ function Section5Screen() {
     <div className="space-y-5">
       <div className="flex items-center gap-2 mb-1">
         <Users className="w-5 h-5 text-dream-glow" />
-        <h2 className="text-xl font-display font-bold text-sleep-900">Their world</h2>
+        <h2 className="text-xl font-display font-bold text-cream-100">Their world</h2>
       </div>
-      <p className="text-sm text-sleep-600 font-body">
+      <p className="text-sm text-cream-300/78 font-body leading-relaxed">
         Almost done. This helps us put the right people in their stories — and notice when they keep coming up.
       </p>
 
       {/* Allies */}
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">
           Who are the important people in their life?
         </label>
-        <p className="text-xs text-sleep-400 font-body mb-3">Add family members, close friends, anyone who matters to them</p>
+        <p className="text-xs text-cream-400/60 font-body mb-3">Add family members, close friends, anyone who matters to them</p>
         <div className="space-y-3">
           {allies.map((ally, i) => (
             <div key={i} className="flex gap-2 items-start">
@@ -448,18 +451,18 @@ function Section5Screen() {
                 value={ally.name}
                 onChange={(e) => updateAlly(i, 'name', e.target.value)}
                 placeholder="Name"
-                className="flex-1 px-3 py-2.5 bg-white/80 border-2 border-cream-300/60 rounded-xl text-sm text-sleep-900 placeholder-sleep-400 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+                className="flex-1 input-field"
               />
               <select
                 value={ally.relationship}
                 onChange={(e) => updateAlly(i, 'relationship', e.target.value)}
-                className="px-3 py-2.5 bg-white/80 border-2 border-cream-300/60 rounded-xl text-sm text-sleep-900 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+                className="px-3 py-2.5 bg-[#140e0a]/80 border-2 border-white/10 rounded-xl text-sm text-cream-200 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
               >
                 <option value="">Relationship</option>
                 {RELATIONSHIP_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
               </select>
               {allies.length > 1 && (
-                <button onClick={() => removeAlly(i)} className="p-2 text-danger/60 hover:text-danger transition-colors">
+                <button onClick={() => removeAlly(i)} className="p-2 text-[#F2A180]/70 hover:text-[#F2A180] transition-colors">
                   <X className="w-4 h-4" />
                 </button>
               )}
@@ -476,7 +479,7 @@ function Section5Screen() {
 
       {/* Pets */}
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">Any pets?</label>
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">Any pets?</label>
         <div className="space-y-3">
           {pets.map((pet, i) => (
             <div key={i} className="flex gap-2 items-start">
@@ -485,16 +488,16 @@ function Section5Screen() {
                 value={pet.name}
                 onChange={(e) => updatePet(i, 'name', e.target.value)}
                 placeholder="Pet's name"
-                className="flex-1 px-3 py-2.5 bg-white/80 border-2 border-cream-300/60 rounded-xl text-sm text-sleep-900 placeholder-sleep-400 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+                className="flex-1 input-field"
               />
               <input
                 type="text"
                 value={pet.type}
                 onChange={(e) => updatePet(i, 'type', e.target.value)}
                 placeholder="Type (dog, cat...)"
-                className="flex-1 px-3 py-2.5 bg-white/80 border-2 border-cream-300/60 rounded-xl text-sm text-sleep-900 placeholder-sleep-400 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+                className="flex-1 input-field"
               />
-              <button onClick={() => removePet(i)} className="p-2 text-danger/60 hover:text-danger transition-colors">
+              <button onClick={() => removePet(i)} className="p-2 text-[#F2A180]/70 hover:text-[#F2A180] transition-colors">
                 <X className="w-4 h-4" />
               </button>
             </div>
@@ -510,10 +513,10 @@ function Section5Screen() {
 
       {/* Social difficulty */}
       <div>
-        <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">
+        <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">
           Is there anyone or anything causing difficulty for them socially right now?
         </label>
-        <p className="text-xs text-sleep-400 font-body mb-2">
+        <p className="text-xs text-cream-400/60 font-body mb-2 leading-relaxed">
           e.g. "There's a kid at school who's been unkind" or "She's finding it hard since her best friend moved class". Optional — skip if nothing comes to mind.
         </p>
         <textarea
@@ -521,7 +524,7 @@ function Section5Screen() {
           onChange={(e) => setField('socialDifficulty', e.target.value)}
           placeholder="Optional..."
           rows={3}
-          className="w-full px-4 py-3 bg-white/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 placeholder-sleep-400 font-body resize-none focus:border-dream-glow/50 focus:outline-none transition-all"
+          className="input-field resize-none"
         />
       </div>
     </div>
@@ -544,8 +547,8 @@ function CompletionScreen() {
       >
         <Check className="w-10 h-10 text-success" />
       </motion.div>
-      <h1 className="text-2xl font-display font-bold text-sleep-900 mb-4">You're all set</h1>
-      <div className="text-sm text-sleep-600 font-body space-y-3 max-w-sm mb-8">
+      <h1 className="text-3xl font-display font-bold text-cream-100 mb-4">You're all set</h1>
+      <div className="text-sm text-cream-300/78 font-body space-y-3 max-w-sm mb-8 leading-relaxed">
         <p>We've got everything we need to get started.</p>
         <p>
           Every story from tonight will be built around <span className="font-bold text-dream-glow">{childName || 'your child'}</span>. And each morning after a story night, we'll share a small observation about what came up — things you might want to notice through the day.
@@ -571,13 +574,13 @@ function BaselineScreen({ onComplete, isSaving }) {
   return (
     <div className="space-y-5">
       <div className="text-center mb-2">
-        <h2 className="text-xl font-display font-bold text-sleep-900 mb-2">One last thing — a quick snapshot</h2>
-        <p className="text-sm text-sleep-600 font-body">
-          We'll ask you these same questions in three weeks so we can show you what's changed. Takes about a minute.
+        <h2 className="text-xl font-display font-bold text-cream-100 mb-2">One last thing — a quick snapshot</h2>
+        <p className="text-sm text-cream-300/78 font-body leading-relaxed">
+          We'll ask you these same questions every three weeks so we can show you what's changed. Takes about a minute.
         </p>
       </div>
 
-      <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 space-y-6">
+      <div className="glass-card-solid p-5 space-y-6 shadow-card">
         <SliderField
           label="The bedtime battle — how hard is it right now?"
           hint="1 = barely a struggle, 10 = full war every night"
@@ -615,13 +618,13 @@ function BaselineScreen({ onComplete, isSaving }) {
         disabled={isSaving}
         className={`w-full py-3.5 rounded-2xl font-display font-bold text-sm transition-all ${
           isSaving
-            ? 'bg-cream-300/50 text-sleep-400 cursor-not-allowed'
+            ? 'bg-white/10 text-cream-400/55 cursor-not-allowed'
             : 'bg-dream-glow text-white shadow-glow-sm hover:bg-dream-aurora active:scale-[0.98]'
         }`}
       >
         {isSaving ? (
           <span className="flex items-center justify-center gap-2">
-            <span className="w-4 h-4 border-2 border-cream-300 border-t-white rounded-full animate-spin" />
+            <span className="w-4 h-4 border-2 border-white/25 border-t-white rounded-full animate-spin" />
             Saving…
           </span>
         ) : (
@@ -783,18 +786,18 @@ export default function OnboardingFlow({ onComplete, onSkip }) {
   const sectionNumber = screenIndex >= 1 && screenIndex <= 5 ? screenIndex : null
 
   return (
-    <div className="min-h-full px-5 py-6 animate-fade-in">
+    <div className="min-h-full px-5 py-6 animate-fade-in text-cream-100">
       {/* Progress bar for sections 1-5 */}
       {sectionNumber && <ProgressBar current={sectionNumber - 1} total={5} />}
 
       {/* Section label */}
       {sectionNumber && (
-        <p className="text-xs font-display font-semibold text-sleep-400 mb-4">{sectionNumber} of 5</p>
+        <p className="text-xs font-display font-semibold text-cream-400/60 mb-4">{sectionNumber} of 5</p>
       )}
 
       {/* Error display */}
       {error && (
-        <div className="mb-4 p-3 bg-danger/10 border border-danger/20 rounded-xl text-xs text-danger font-body">
+        <div className="mb-4 p-3 bg-[#F2A180]/10 border border-[#F2A180]/20 rounded-xl text-xs text-[#F2A180] font-body">
           {error}
         </div>
       )}
@@ -827,7 +830,7 @@ export default function OnboardingFlow({ onComplete, onSkip }) {
           {showBackButton ? (
             <button
               onClick={prevScreen}
-              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-display font-semibold text-sleep-500 hover:text-sleep-800 transition-colors"
+              className="flex items-center gap-1.5 px-4 py-2.5 text-sm font-display font-semibold text-cream-300/78 hover:text-cream-100 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" /> Back
             </button>
@@ -838,13 +841,13 @@ export default function OnboardingFlow({ onComplete, onSkip }) {
             disabled={!canProceed() || isSaving}
             className={`flex items-center gap-1.5 px-6 py-3 rounded-2xl text-sm font-display font-bold transition-all ${
               !canProceed() || isSaving
-                ? 'bg-cream-300/50 text-sleep-400 cursor-not-allowed'
+                ? 'bg-white/10 text-cream-400/55 cursor-not-allowed'
                 : 'bg-dream-glow text-white shadow-glow-sm hover:bg-dream-aurora active:scale-[0.98]'
             }`}
           >
             {isSaving ? (
               <span className="flex items-center gap-2">
-                <span className="w-4 h-4 border-2 border-cream-300 border-t-white rounded-full animate-spin" />
+                <span className="w-4 h-4 border-2 border-white/25 border-t-white rounded-full animate-spin" />
                 Saving…
               </span>
             ) : currentScreen === 'section5' ? (
@@ -861,7 +864,7 @@ export default function OnboardingFlow({ onComplete, onSkip }) {
         <div className="text-center mt-4">
           <button
             onClick={onSkip}
-            className="text-sm text-sleep-400 hover:text-sleep-600 font-body transition-colors"
+            className="text-sm text-cream-400/60 hover:text-cream-200 font-body transition-colors"
           >
             I'll do this later
           </button>

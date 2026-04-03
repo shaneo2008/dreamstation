@@ -161,7 +161,7 @@ export default function ChildProfileEdit({ childId, onBack }) {
 
   if (loading) {
     return (
-      <div className="min-h-full px-5 py-6 flex items-center justify-center">
+      <div className="min-h-full px-5 py-6 flex items-center justify-center text-cream-100">
         <div className="animate-spin text-2xl">⏳</div>
       </div>
     )
@@ -172,25 +172,30 @@ export default function ChildProfileEdit({ childId, onBack }) {
     : null
 
   return (
-    <div className="min-h-full px-5 py-6 animate-fade-in pb-24">
-      {/* Header */}
+    <div className="min-h-full px-5 py-6 animate-fade-in pb-24 text-cream-100">
       <div className="flex items-center gap-3 mb-6">
-        <button onClick={onBack} className="p-2 text-sleep-500 hover:text-sleep-800 transition-colors">
+        <button onClick={onBack} className="w-10 h-10 rounded-2xl bg-[#1b120c]/88 border border-white/10 flex items-center justify-center text-cream-200 hover:text-cream-100 hover:bg-[#24170f] transition-colors shrink-0">
           <ArrowLeft className="w-5 h-5" />
         </button>
-        <h1 className="text-xl font-display font-bold text-sleep-900">{name}'s Profile</h1>
+        <div className="min-w-0">
+          <div className="text-[11px] uppercase tracking-[0.16em] text-cream-400/55 font-body">Profile</div>
+          <h1 className="text-xl font-display font-bold text-cream-100 truncate">{name}'s Profile</h1>
+        </div>
         <button
           onClick={handleSave}
           disabled={saving}
-          className="ml-auto flex items-center gap-1.5 px-4 py-2 bg-dream-glow hover:bg-dream-aurora text-white rounded-xl font-display font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-60"
+          className="ml-auto flex items-center gap-1.5 px-4 py-2.5 bg-dream-glow hover:bg-dream-aurora text-white rounded-2xl font-display font-semibold text-sm transition-all active:scale-[0.97] disabled:opacity-60 shadow-card"
         >
           {saved ? <Check className="w-4 h-4" /> : <Save className="w-4 h-4" />}
           {saving ? 'Saving…' : saved ? 'Saved' : 'Save'}
         </button>
       </div>
 
+      <div className="max-w-lg mx-auto mb-5 rounded-[28px] border border-white/10 bg-[#1b120c]/82 px-4 py-4 shadow-card backdrop-blur-md">
+        <p className="text-sm text-cream-300/80 font-body leading-relaxed">Update the details that shape your child’s stories, routines, and reflections so DreamStation keeps pace with real life.</p>
+      </div>
+
       <div className="max-w-lg mx-auto space-y-6">
-        {/* Section 1: Basics */}
         <Section title="Who they are">
           <Field label="Name">
             <input type="text" value={name} onChange={e => setName(e.target.value)} className="input-field" />
@@ -202,7 +207,7 @@ export default function ChildProfileEdit({ childId, onBack }) {
             <div className="grid grid-cols-2 gap-2">
               {['Girl', 'Boy', 'They/them', 'Skip'].map(opt => (
                 <button key={opt} onClick={() => setGenderPronoun(opt)}
-                  className={`px-3 py-2 rounded-xl border-2 text-sm font-body transition-all ${genderPronoun === opt ? 'border-dream-glow bg-dream-stardust/30 text-sleep-900' : 'border-cream-300/60 text-sleep-600'}`}
+                  className={`px-3 py-2.5 rounded-2xl border text-sm font-body transition-all ${genderPronoun === opt ? 'border-dream-glow/35 bg-dream-glow/10 text-cream-100 shadow-card' : 'border-white/10 bg-[#140e0a]/78 text-cream-300/78 hover:border-dream-glow/20'}`}
                 >{opt}</button>
               ))}
             </div>
@@ -212,7 +217,6 @@ export default function ChildProfileEdit({ childId, onBack }) {
           </Field>
         </Section>
 
-        {/* Section 2: Nervous System (Full Programme only) */}
         {mode === 'full_programme' && (
           <Section title="Their nervous system">
             <Field label="Select all that apply">
@@ -228,7 +232,6 @@ export default function ChildProfileEdit({ childId, onBack }) {
           </Section>
         )}
 
-        {/* Section 3: Bedtime (Full Programme only) */}
         {mode === 'full_programme' && (
           <Section title="What bedtime looks like">
             <Field label="When bedtime is difficult, what does that usually look like?">
@@ -238,7 +241,7 @@ export default function ChildProfileEdit({ childId, onBack }) {
               <div className="space-y-2">
                 {['Almost every night', 'A few times a week', 'Once or twice a week', 'Occasionally', 'Rarely or never'].map(opt => (
                   <button key={opt} onClick={() => setNightWakingFrequency(opt)}
-                    className={`w-full text-left px-4 py-2.5 rounded-xl border-2 text-sm font-body transition-all ${nightWakingFrequency === opt ? 'border-dream-glow bg-dream-stardust/30 text-sleep-900' : 'border-cream-300/60 text-sleep-600'}`}
+                    className={`w-full text-left px-4 py-3 rounded-2xl border text-sm font-body transition-all ${nightWakingFrequency === opt ? 'border-dream-glow/35 bg-dream-glow/10 text-cream-100 shadow-card' : 'border-white/10 bg-[#140e0a]/78 text-cream-300/78 hover:border-dream-glow/20'}`}
                   >{opt}</button>
                 ))}
               </div>
@@ -246,7 +249,6 @@ export default function ChildProfileEdit({ childId, onBack }) {
           </Section>
         )}
 
-        {/* Section 4: Fears & Stressors (Full Programme only) */}
         {mode === 'full_programme' && (
           <Section title="What's on their mind">
             <Field label="Fears and worries">
@@ -260,7 +262,7 @@ export default function ChildProfileEdit({ childId, onBack }) {
               <textarea value={currentStressors} onChange={e => setCurrentStressors(e.target.value)} rows={3} className="input-field resize-none"
                 placeholder="Anything happening right now..." />
               {stressorsDaysAgo !== null && (
-                <p className="text-[10px] text-sleep-400 font-body mt-1">
+                <p className="text-[10px] text-cream-400/60 font-body mt-1">
                   Last updated {stressorsDaysAgo === 0 ? 'today' : `${stressorsDaysAgo} day${stressorsDaysAgo !== 1 ? 's' : ''} ago`}
                   {stressorsDaysAgo > 14 && ' — worth refreshing if things have changed'}
                 </p>
@@ -269,7 +271,6 @@ export default function ChildProfileEdit({ childId, onBack }) {
           </Section>
         )}
 
-        {/* Section 5: Their World (Full Programme only) */}
         {mode === 'full_programme' && (
           <Section title="Their world">
             <Field label="Important people">
@@ -279,12 +280,12 @@ export default function ChildProfileEdit({ childId, onBack }) {
                     <input type="text" value={ally.name} onChange={e => { const u = [...allies]; u[i] = { ...u[i], name: e.target.value }; setAllies(u) }}
                       placeholder="Name" className="flex-1 input-field" />
                     <select value={ally.relationship} onChange={e => { const u = [...allies]; u[i] = { ...u[i], relationship: e.target.value }; setAllies(u) }}
-                      className="input-field w-auto">
+                      className="input-field w-auto [&>option]:bg-[#1b120c] [&>option]:text-cream-100">
                       <option value="">Role</option>
                       {RELATIONSHIP_OPTIONS.map(r => <option key={r} value={r}>{r}</option>)}
                     </select>
                     {allies.length > 1 && (
-                      <button onClick={() => setAllies(allies.filter((_, j) => j !== i))} className="p-2 text-danger/60 hover:text-danger"><X className="w-4 h-4" /></button>
+                      <button onClick={() => setAllies(allies.filter((_, j) => j !== i))} className="p-2 text-[#F2A180]/70 hover:text-[#F2A180]"><X className="w-4 h-4" /></button>
                     )}
                   </div>
                 ))}
@@ -302,7 +303,7 @@ export default function ChildProfileEdit({ childId, onBack }) {
                       placeholder="Name" className="flex-1 input-field" />
                     <input type="text" value={pet.type} onChange={e => { const u = [...pets]; u[i] = { ...u[i], type: e.target.value }; setPets(u) }}
                       placeholder="Type" className="flex-1 input-field" />
-                    <button onClick={() => setPets(pets.filter((_, j) => j !== i))} className="p-2 text-danger/60 hover:text-danger"><X className="w-4 h-4" /></button>
+                    <button onClick={() => setPets(pets.filter((_, j) => j !== i))} className="p-2 text-[#F2A180]/70 hover:text-[#F2A180]"><X className="w-4 h-4" /></button>
                   </div>
                 ))}
                 <button onClick={() => setPets([...pets, { name: '', type: '' }])}
@@ -317,14 +318,13 @@ export default function ChildProfileEdit({ childId, onBack }) {
           </Section>
         )}
 
-        {/* Mode upgrade */}
         {mode === 'just_stories' && (
           <Section title="Upgrade">
-            <p className="text-sm text-sleep-600 font-body mb-3">
+            <p className="text-sm text-cream-300/80 font-body mb-3 leading-relaxed">
               You're currently on Just Stories. Upgrade to Full Programme to get personalised stories, morning observations, and weekly reflections.
             </p>
             <button onClick={() => setShowUpgradeFlow(true)}
-              className="w-full py-3 bg-dream-glow hover:bg-dream-aurora text-white rounded-2xl font-display font-bold text-sm transition-all shadow-glow-sm active:scale-[0.98]">
+              className="btn-primary w-full text-base">
               Upgrade to Full Programme
             </button>
           </Section>
@@ -336,8 +336,8 @@ export default function ChildProfileEdit({ childId, onBack }) {
 
 function Section({ title, children }) {
   return (
-    <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card">
-      <h2 className="text-base font-display font-bold text-sleep-900 mb-4">{title}</h2>
+    <div className="glass-card-solid p-5 text-cream-100">
+      <h2 className="text-base font-display font-bold text-cream-100 mb-4">{title}</h2>
       <div className="space-y-4">{children}</div>
     </div>
   )
@@ -346,7 +346,7 @@ function Section({ title, children }) {
 function Field({ label, children }) {
   return (
     <div>
-      <label className="block text-sm font-display font-semibold text-sleep-700 mb-1.5">{label}</label>
+      <label className="block text-sm font-display font-semibold text-cream-200 mb-1.5">{label}</label>
       {children}
     </div>
   )
@@ -355,13 +355,13 @@ function Field({ label, children }) {
 function CheckItem({ label, checked, onChange }) {
   return (
     <button type="button" onClick={onChange}
-      className={`w-full text-left px-3 py-2.5 rounded-xl border-2 transition-all flex items-center gap-2.5 ${
-        checked ? 'border-dream-glow/50 bg-dream-stardust/30' : 'border-cream-300/60 bg-white/60 hover:border-dream-glow/20'
+      className={`w-full text-left px-3 py-3 rounded-2xl border transition-all flex items-center gap-2.5 ${
+        checked ? 'border-dream-glow/35 bg-dream-glow/10 shadow-card' : 'border-white/10 bg-[#140e0a]/78 hover:border-dream-glow/20'
       }`}>
-      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${checked ? 'bg-dream-glow border-dream-glow' : 'border-cream-400'}`}>
+      <div className={`w-4 h-4 rounded border flex items-center justify-center shrink-0 ${checked ? 'bg-dream-glow border-dream-glow' : 'border-white/20 bg-[#1b120c]'}`}>
         {checked && <Check className="w-2.5 h-2.5 text-white" />}
       </div>
-      <span className="text-xs text-sleep-800 font-body">{label}</span>
+      <span className="text-xs text-cream-200 font-body">{label}</span>
     </button>
   )
 }

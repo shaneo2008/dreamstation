@@ -45,30 +45,40 @@ const LoginScreen = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-cream-100 px-4 py-8 sm:py-4">
+    <div className="min-h-screen flex items-center justify-center bg-sleep-gradient px-4 py-8 sm:py-6 text-cream-100 relative overflow-hidden">
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,_rgba(232,149,106,0.14),_transparent_38%),radial-gradient(circle_at_bottom,_rgba(140,96,255,0.08),_transparent_32%)] pointer-events-none" />
       <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.5, ease: [0.4, 0, 0.2, 1] }}
-        className="w-full max-w-sm"
+        className="w-full max-w-sm relative z-10"
       >
         {/* Logo */}
         <div className="text-center mb-6 sm:mb-8">
           <motion.div
-            className="inline-flex items-center justify-center w-20 h-20 sm:w-20 sm:h-20 bg-white rounded-3xl shadow-soft mb-3 sm:mb-4 border-2 border-cream-300/50"
+            className="inline-flex items-center justify-center w-20 h-20 sm:w-20 sm:h-20 bg-[#f8f1e7] rounded-[28px] shadow-card mb-3 sm:mb-4 border border-white/40"
             animate={{ y: [0, -5, 0] }}
             transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
           >
             <Moon className="w-9 h-9 sm:w-10 sm:h-10 text-dream-glow" />
           </motion.div>
-          <h1 className="text-2xl sm:text-2xl font-display font-bold text-sleep-900 mb-1">
+          <h1 className="text-3xl sm:text-3xl font-display font-bold text-cream-100 mb-2">
             DreamStation
           </h1>
-          <p className="text-sm text-sleep-500 font-body">Magical bedtime stories ✨</p>
+          <p className="text-sm text-cream-300/75 font-body">Magical bedtime stories, reflections, and bedtime support.</p>
         </div>
 
         {/* Form card */}
-        <div className="bg-white/80 backdrop-blur-sm rounded-3xl p-5 sm:p-6 shadow-soft border-2 border-cream-300/50">
+        <div className="glass-card-solid p-5 sm:p-6 shadow-card">
+          <div className="mb-5 text-center">
+            <h2 className="text-xl font-display font-bold text-cream-100 mb-1">
+              {isSignUp ? 'Create your account' : 'Welcome back'}
+            </h2>
+            <p className="text-sm text-cream-300/72 font-body">
+              {isSignUp ? 'Start your DreamStation setup.' : 'Sign in to continue your evening routine.'}
+            </p>
+          </div>
+
           <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-4">
             <div>
               <input
@@ -77,7 +87,7 @@ const LoginScreen = () => {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
-                className="w-full px-4 py-3.5 sm:py-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl text-base sm:text-sm text-sleep-900 placeholder-sleep-400 outline-none focus:border-dream-glow/50 transition-all font-body"
+                className="input-field text-base sm:text-sm"
               />
             </div>
 
@@ -88,14 +98,14 @@ const LoginScreen = () => {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
-                className="w-full px-4 py-3.5 sm:py-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl text-base sm:text-sm text-sleep-900 placeholder-sleep-400 outline-none focus:border-dream-glow/50 transition-all font-body"
+                className="input-field text-base sm:text-sm"
               />
             </div>
 
             {error && (
-              <div className={`text-xs text-center font-display font-semibold px-3 py-2 rounded-xl ${error.includes('Check your email')
-                  ? 'text-success bg-success/10'
-                  : 'text-danger bg-danger/10'
+              <div className={`text-xs text-center font-display font-semibold px-3 py-2.5 rounded-2xl border ${error.includes('Check your email')
+                  ? 'text-success bg-success/10 border-success/20'
+                  : 'text-[#F2A180] bg-[#F2A180]/10 border-[#F2A180]/20'
                 }`}>
                 {error}
               </div>
@@ -105,14 +115,14 @@ const LoginScreen = () => {
               type="submit"
               disabled={loading}
               className={`w-full py-4 sm:py-3.5 rounded-2xl font-display font-bold text-base sm:text-sm transition-all ${loading
-                ? 'bg-cream-300/50 text-sleep-400 cursor-not-allowed'
-                : 'bg-dream-glow text-white shadow-glow-sm hover:bg-dream-aurora active:scale-[0.98]'
+                ? 'bg-white/10 text-cream-400/55 cursor-not-allowed'
+                : 'btn-primary shadow-glow-sm active:scale-[0.98]'
                 }`}
               whileTap={!loading ? { scale: 0.97 } : {}}
             >
               {loading ? (
                 <span className="flex items-center justify-center gap-2">
-                  <span className="w-4 h-4 border-2 border-cream-300 border-t-white rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-white/25 border-t-white rounded-full animate-spin" />
                   Loading…
                 </span>
               ) : (
@@ -121,7 +131,7 @@ const LoginScreen = () => {
             </motion.button>
           </form>
 
-          <p className="text-center mt-4 text-sm sm:text-xs text-sleep-500 font-body">
+          <p className="text-center mt-4 text-sm sm:text-xs text-cream-300/72 font-body">
             {isSignUp ? 'Already have an account?' : "Don't have an account?"}{' '}
             <button
               onClick={() => setIsSignUp(!isSignUp)}
@@ -144,7 +154,7 @@ function AppWithAuth() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-cream-100">
+      <div className="min-h-screen flex items-center justify-center bg-sleep-gradient text-cream-100">
         <motion.div
           animate={{ rotate: 360 }}
           transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}

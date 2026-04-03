@@ -51,19 +51,23 @@ export default function ModeSelectionScreen({ onSelectJustStories, onSelectFullP
   const justStoriesReady = justStoriesName.trim() && parseInt(justStoriesAge) >= 3 && parseInt(justStoriesAge) <= 12
 
   return (
-    <div className="min-h-full flex flex-col items-center justify-center px-5 py-8 animate-fade-in">
+    <div className="min-h-full flex flex-col items-center justify-center px-5 py-8 animate-fade-in text-cream-100">
       <motion.div
-        className="w-16 h-16 bg-white rounded-3xl shadow-soft border-2 border-cream-300/50 flex items-center justify-center mb-6"
+        className="w-16 h-16 bg-[#f8f1e7] rounded-[28px] shadow-card border border-white/40 flex items-center justify-center mb-6"
         animate={{ y: [0, -4, 0] }}
         transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
       >
         <Moon className="w-8 h-8 text-dream-glow" />
       </motion.div>
 
-      <h1 className="text-2xl font-display font-bold text-sleep-900 mb-2 text-center">
+      <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#1b120c]/88 px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-cream-400/65 font-body shadow-card backdrop-blur-md mb-4">
+        <span>Choose your path</span>
+      </div>
+
+      <h1 className="text-3xl font-display font-bold text-cream-100 mb-2 text-center">
         How would you like to use DreamStation?
       </h1>
-      <p className="text-sm text-sleep-500 font-body mb-8 text-center max-w-sm">
+      <p className="text-sm text-cream-300/75 font-body mb-8 text-center max-w-sm leading-relaxed">
         You can change this later in Settings.
       </p>
 
@@ -71,19 +75,19 @@ export default function ModeSelectionScreen({ onSelectJustStories, onSelectFullP
         {/* Just Stories */}
         <button
           onClick={handleJustStoriesSelect}
-          className={`w-full text-left p-5 rounded-3xl border-2 transition-all duration-200 ${
+          className={`w-full text-left p-5 rounded-[28px] border transition-all duration-200 ${
             selected === 'just_stories'
-              ? 'border-dream-glow bg-dream-stardust/20'
-              : 'border-cream-300/60 bg-white/80 hover:border-dream-glow/30'
+              ? 'border-dream-glow/35 bg-dream-glow/10 shadow-card'
+              : 'border-white/10 bg-[#1b120c]/88 hover:border-dream-glow/20'
           }`}
         >
           <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-2xl bg-cream-200 flex items-center justify-center shrink-0">
-              <BookOpen className="w-5 h-5 text-sleep-600" />
+            <div className="w-10 h-10 rounded-2xl bg-[#140e0a]/82 border border-white/10 flex items-center justify-center shrink-0">
+              <BookOpen className="w-5 h-5 text-dream-glow" />
             </div>
             <div>
-              <h3 className="font-display font-bold text-sleep-900 mb-1">Just Stories</h3>
-              <p className="text-xs text-sleep-500 font-body leading-relaxed">
+              <h3 className="font-display font-bold text-cream-100 mb-1">Just Stories</h3>
+              <p className="text-xs text-cream-300/72 font-body leading-relaxed">
                 Beautiful bedtime stories personalised with your child's name. Quick setup — just a name and age.
               </p>
             </div>
@@ -95,14 +99,14 @@ export default function ModeSelectionScreen({ onSelectJustStories, onSelectFullP
           <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: 'auto' }}
-            className="bg-white/80 border-2 border-cream-300/50 rounded-2xl p-4 space-y-3"
+            className="glass-card-solid rounded-[24px] p-4 space-y-3"
           >
             <input
               type="text"
               value={justStoriesName}
               onChange={(e) => setJustStoriesName(e.target.value)}
               placeholder="Child's first name"
-              className="w-full px-4 py-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 placeholder-sleep-400 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+              className="input-field"
             />
             <input
               type="number"
@@ -111,20 +115,20 @@ export default function ModeSelectionScreen({ onSelectJustStories, onSelectFullP
               value={justStoriesAge}
               onChange={(e) => setJustStoriesAge(e.target.value)}
               placeholder="Age (3–12)"
-              className="w-full px-4 py-3 bg-cream-100/80 border-2 border-cream-300/60 rounded-2xl text-sm text-sleep-900 placeholder-sleep-400 font-body focus:border-dream-glow/50 focus:outline-none transition-all"
+              className="input-field"
             />
             <button
               onClick={handleJustStoriesSubmit}
               disabled={!justStoriesReady || isSaving}
               className={`w-full py-3 rounded-2xl font-display font-bold text-sm transition-all flex items-center justify-center gap-2 ${
                 !justStoriesReady || isSaving
-                  ? 'bg-cream-300/50 text-sleep-400 cursor-not-allowed'
+                  ? 'bg-white/10 text-cream-400/55 cursor-not-allowed'
                   : 'bg-dream-glow text-white shadow-glow-sm hover:bg-dream-aurora active:scale-[0.98]'
               }`}
             >
               {isSaving ? (
                 <span className="flex items-center gap-2">
-                  <span className="w-4 h-4 border-2 border-cream-300 border-t-white rounded-full animate-spin" />
+                  <span className="w-4 h-4 border-2 border-white/25 border-t-white rounded-full animate-spin" />
                   Saving…
                 </span>
               ) : (
@@ -137,22 +141,22 @@ export default function ModeSelectionScreen({ onSelectJustStories, onSelectFullP
         {/* Full Programme */}
         <button
           onClick={handleFullProgrammeSelect}
-          className={`w-full text-left p-5 rounded-3xl border-2 transition-all duration-200 ${
+          className={`w-full text-left p-5 rounded-[28px] border transition-all duration-200 ${
             selected === 'full_programme'
-              ? 'border-dream-glow bg-dream-stardust/20'
-              : 'border-cream-300/60 bg-white/80 hover:border-dream-glow/30'
+              ? 'border-dream-glow/35 bg-dream-glow/10 shadow-card'
+              : 'border-white/10 bg-[#1b120c]/88 hover:border-dream-glow/20'
           }`}
         >
           <div className="flex items-start gap-4">
-            <div className="w-10 h-10 rounded-2xl bg-dream-stardust/40 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-2xl bg-[#140e0a]/82 border border-white/10 flex items-center justify-center shrink-0">
               <Brain className="w-5 h-5 text-dream-glow" />
             </div>
             <div>
-              <h3 className="font-display font-bold text-sleep-900 mb-1">Full Programme</h3>
-              <p className="text-xs text-sleep-500 font-body leading-relaxed">
+              <h3 className="font-display font-bold text-cream-100 mb-1">Full Programme</h3>
+              <p className="text-xs text-cream-300/72 font-body leading-relaxed">
                 Stories that respond to your child's emotional world, plus morning observations and weekly insights for you. Takes about 10 minutes to set up.
               </p>
-              <span className="inline-block mt-2 px-2.5 py-1 bg-dream-stardust/30 text-dream-aurora rounded-full text-[10px] font-display font-semibold border border-dream-glow/20">
+              <span className="inline-block mt-2 px-2.5 py-1 bg-dream-glow/10 text-dream-glow rounded-full text-[10px] font-display font-semibold border border-dream-glow/20">
                 Recommended for the trial
               </span>
             </div>

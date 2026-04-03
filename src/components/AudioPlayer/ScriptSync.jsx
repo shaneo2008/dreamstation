@@ -75,8 +75,8 @@ const ScriptSync = ({
     return (
       <div className={`bg-gray-900/50 backdrop-blur-sm rounded-xl border border-gray-700/50 p-6 ${className}`}>
         <div className="text-center text-gray-400">
-          <div className="text-lg mb-2">No Script Available</div>
-          <div className="text-sm">Load a script to see synchronized playback</div>
+          <div className="text-lg mb-2">No Story Available</div>
+          <div className="text-sm">Load a story to see synchronized playback</div>
         </div>
       </div>
     );
@@ -89,7 +89,7 @@ const ScriptSync = ({
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold text-white flex items-center">
             <Clock size={20} className="mr-2" />
-            Script Synchronization
+            Story Synchronization
           </h3>
           <div className="text-sm text-gray-400">
             {scriptLines.length} lines

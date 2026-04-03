@@ -305,7 +305,7 @@ const SimpleAudioPlayer = ({
       {scriptLines.length > 0 && (
         <div className="max-h-64 overflow-y-auto border-t-2 border-cream-300/30 pt-4 mt-4">
           <h4 className="text-xs font-display font-bold text-sleep-600 mb-2 flex items-center">
-            📝 Script Lines ({scriptLines.length})
+            📝 Story Lines ({scriptLines.length})
           </h4>
           <div className="space-y-1.5">
             {scriptLines.map((line, index) => (

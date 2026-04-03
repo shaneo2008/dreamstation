@@ -1,10 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { X, ChevronDown, ChevronUp, Plus, Trash2, Play, Music, ArrowLeft, Save } from 'lucide-react';
+import { X, Music, ArrowLeft, Save } from 'lucide-react';
 import { saveScriptToDatabase } from '../services/scriptSaveService';
-import { generateAndPlayPreview, VOICE_OPTIONS } from '../services/linePreviewService';
+import { generateAndPlayPreview } from '../services/linePreviewService';
 import { generateFullScriptTTS, isFullScriptTTSAvailable } from '../services/fullScriptTTSService';
 import { createDemoAudioProduction } from '../services/demoAudioService';
 import VoiceAssignmentPanel from './VoiceAssignmentPanel';
+
+const CHARACTER_TINTS = [
+  'bg-[#3c281b]/90 border-[#7f5138]/45 text-[#ffd9c2]',
+  'bg-[#2f2620]/90 border-[#5d5750]/45 text-[#f3dfcf]',
+  'bg-[#2a2430]/90 border-[#6f5d86]/45 text-[#eadfff]',
+  'bg-[#25312c]/90 border-[#4d7b68]/45 text-[#d9f0e5]',
+  'bg-[#30241d]/90 border-[#8a6750]/45 text-[#f4dfd0]',
+];
+
+const getSpeakerTint = (speaker = 'Narrator') => {
+  const hash = speaker.split('').reduce((total, char) => total + char.charCodeAt(0), 0);
+  return CHARACTER_TINTS[hash % CHARACTER_TINTS.length];
+};
 
 const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPlayAudio }) => {
   const [scriptLines, setScriptLines] = useState([]);
@@ -25,6 +38,7 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
       // Normalize field names to match Script Editor expectations
       const normalizedLines = script.lines.map(line => ({
         id: line.id,
+        lineNumber: line.lineNumber || line.line_number || (line.line_index != null ? Number(line.line_index) + 1 : undefined),
         speaker: line.speaker || line.speaker_name || 'Narrator',
         text: line.text || line.text_content || '',
         type: line.type || line.line_type || 'dialogue',
@@ -101,17 +115,17 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
       if (result.success) {
         setLastSaved(new Date());
         setHasUnsavedChanges(false);
-        alert('Script saved successfully!');
+        alert('Story saved successfully!');
         // Trigger library refresh callback
         if (onSave) {
           onSave();
         }
       } else {
-        throw new Error(result.error || 'Failed to save script');
+        throw new Error(result.error || 'Failed to save story');
       }
     } catch (error) {
       console.error('Error saving script:', error);
-      alert(`Error saving script: ${error.message}`);
+      alert(`Error saving story: ${error.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -189,7 +203,7 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
       console.log('🎵 Generating full audio production for script...');
 
       if (scriptLines.length === 0) {
-        throw new Error('No script lines to generate audio for');
+        throw new Error('No story lines to generate audio for');
       }
 
       // Get user ID for authentication
@@ -215,7 +229,7 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
         // Use the existing saveScript function logic
         const scriptData = {
           id: crypto.randomUUID(),
-          title: script?.title || 'Untitled Script',
+          title: script?.title || 'Untitled Story',
           lines: scriptLines,
           metadata: {
             ...script?.metadata,
@@ -235,13 +249,13 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
           // Update the script object for future use
           script.id = scriptData.id;
         } else {
-          throw new Error(result.error || 'Failed to auto-save script before audio generation');
+          throw new Error(result.error || 'Failed to auto-save story before audio generation');
         }
       }
 
       const scriptData = {
         id: scriptId, // Use the script ID (either existing or newly saved)
-        title: script?.title || 'Untitled Script',
+        title: script?.title || 'Untitled Story',
         lines: scriptLines
       };
 
@@ -314,9 +328,9 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
   if (!script) {
     return (
       <div className="min-h-full animate-fade-in flex items-center justify-center p-6">
-        <div className="text-center bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-8 shadow-card max-w-sm">
-          <h2 className="text-xl font-display font-bold text-sleep-900 mb-3">No Script Loaded</h2>
-          <p className="text-sleep-500 mb-6 font-body text-sm">Generate a script first to use the editor.</p>
+        <div className="text-center bg-[#24170f]/80 backdrop-blur-md border border-white/10 rounded-[24px] p-8 shadow-card max-w-sm text-cream-100">
+          <h2 className="text-xl font-display font-bold text-cream-100 mb-3">No Story Loaded</h2>
+          <p className="text-cream-300/75 mb-6 font-body text-sm">Generate a story first to use the editor.</p>
           <button
             onClick={onBack}
             className="px-6 py-3 bg-dream-glow hover:bg-dream-aurora text-white font-display font-bold rounded-2xl transition-all duration-200 shadow-glow-sm active:scale-[0.98] text-sm"
@@ -332,20 +346,20 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
      Main editor
      ───────────────────────────────────────────── */
   return (
-    <div className="min-h-full animate-fade-in">
+    <div className="min-h-full animate-fade-in text-cream-100">
       {/* Header */}
-      <div className="px-4 py-3 bg-white/80 backdrop-blur-sm border-b border-cream-300/50">
+      <div className="px-4 py-3 bg-[#1b120c]/82 backdrop-blur-md border-b border-white/10">
         {/* Row 1: Back + title + close */}
         <div className="flex items-center gap-2 mb-2">
           <button
             onClick={onBack}
-            className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl font-display font-semibold text-sm text-sleep-500 hover:text-sleep-800 transition-all shrink-0"
+            className="flex items-center gap-1.5 px-2 py-1.5 rounded-xl font-display font-semibold text-sm text-cream-300/75 hover:text-cream-100 transition-all shrink-0"
           >
             <ArrowLeft className="w-4 h-4" />
             Back
           </button>
           <div className="flex-1 min-w-0 text-center">
-            <h1 className="text-base font-display font-bold text-sleep-900 truncate leading-tight">{script.title || 'Generated Script'}</h1>
+            <h1 className="text-base font-display font-bold text-cream-100 truncate leading-tight">{script.title || 'Generated Story'}</h1>
             {hasUnsavedChanges && (
               <span className="text-xs text-dream-glow font-display font-semibold">• Unsaved changes</span>
             )}
@@ -355,37 +369,40 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
           </div>
           <button
             onClick={onBack}
-            className="p-1.5 text-sleep-400 hover:text-sleep-800 transition-colors rounded-xl shrink-0"
+            className="p-1.5 text-cream-400/65 hover:text-cream-100 transition-colors rounded-xl shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
         {/* Row 2: Action buttons */}
-        <div className="flex items-center justify-end gap-2">
-          <button
-            onClick={generateFullAudio}
-            disabled={isGeneratingFullAudio || scriptLines.length === 0}
-            data-audio-generation
-            className={`px-3 py-2 rounded-xl font-display font-semibold text-xs flex items-center gap-1.5 transition-all ${isGeneratingFullAudio || scriptLines.length === 0
-                ? 'bg-cream-300/50 text-sleep-400 cursor-not-allowed'
-                : 'bg-pastel-lavender text-white hover:bg-pastel-lavender/80 active:scale-[0.97]'
-              }`}
-          >
-            <Music className="w-3.5 h-3.5" />
-            {isGeneratingFullAudio ? 'Generating…' : 'Full Audio'}
-          </button>
-
+        <div className="flex flex-col items-end gap-2 sm:flex-row sm:items-center sm:justify-end">
           <button
             onClick={saveScript}
             disabled={isSaving || !hasUnsavedChanges}
             className={`px-3 py-2 rounded-xl font-display font-semibold text-xs flex items-center gap-1.5 transition-all ${hasUnsavedChanges
-                ? 'bg-dream-glow hover:bg-dream-aurora text-white active:scale-[0.97]'
-                : 'bg-cream-200 text-sleep-400 cursor-not-allowed'
+                ? 'bg-sleep-700/70 hover:bg-sleep-650/80 text-white active:scale-[0.97]'
+                : 'bg-white/10 text-cream-400/60 cursor-not-allowed'
               }`}
           >
             <Save className="w-3.5 h-3.5" />
             {isSaving ? 'Saving…' : 'Save'}
           </button>
+
+          <button
+            onClick={generateFullAudio}
+            disabled={isGeneratingFullAudio || scriptLines.length === 0}
+            data-audio-generation
+            className={`px-4 py-2.5 rounded-2xl font-display font-semibold text-xs flex items-center gap-1.5 transition-all shadow-glow-sm ${isGeneratingFullAudio || scriptLines.length === 0
+                ? 'bg-white/10 text-cream-400/60 cursor-not-allowed shadow-none'
+                : 'bg-dream-glow text-white hover:bg-dream-aurora active:scale-[0.97]'
+              }`}
+          >
+            <Music className="w-3.5 h-3.5" />
+            {isGeneratingFullAudio ? 'Generating…' : 'Generate Full Story Audio'}
+          </button>
+        </div>
+        <div className="flex justify-end mt-2">
+          <span className="text-[11px] text-cream-400/65 font-body">Usually ready in about 90 seconds</span>
         </div>
       </div>
 
@@ -408,14 +425,14 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
               <div
                 key={line.id}
                 className={`border-2 rounded-2xl p-4 transition-all duration-200 ${(line.type || line.line_type) === 'narration'
-                    ? 'bg-cream-100/60 border-cream-300/40 hover:border-cream-400'
-                    : 'bg-white/80 border-cream-300/50 hover:border-dream-glow/30 shadow-card'
+                    ? 'bg-[#1f1510]/80 border-white/8 hover:border-white/15'
+                    : 'bg-[#24170f]/82 border-white/10 hover:border-dream-glow/30 shadow-card'
                   }`}
               >
                 {/* Line Header */}
                 <div className="flex items-center justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <span className="px-3 py-1.5 bg-cream-100/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 text-sm font-display font-semibold">
+                    <span className={`px-3 py-1.5 border rounded-xl text-sm font-display font-semibold ${getSpeakerTint(line.speaker || 'Narrator')}`}>
                       {line.speaker || 'Narrator'}
                     </span>
                     {line.type === 'narration' && (
@@ -425,7 +442,7 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={() => openAnnotationModal(line.id)}
-                      className="p-1.5 text-sleep-400 hover:text-dream-glow transition-colors rounded-lg"
+                      className="p-1.5 text-cream-400/65 hover:text-dream-glow transition-colors rounded-lg"
                       title="Add TTS Annotation"
                     >
                       🎭
@@ -435,7 +452,7 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
                       disabled={previewingLineId === line.id}
                       className={`p-1.5 transition-colors rounded-lg ${previewingLineId === line.id
                           ? 'text-dream-glow animate-pulse cursor-not-allowed'
-                          : 'text-sleep-400 hover:text-dream-glow'
+                          : 'text-cream-400/65 hover:text-dream-glow'
                         }`}
                       title={previewingLineId === line.id ? 'Generating preview...' : 'Preview with Cartesia TTS'}
                     >
@@ -469,7 +486,7 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
                 )}
 
                 {/* Line Text — read-only */}
-                <p className="w-full bg-cream-100/30 rounded-xl p-3 text-sleep-900 text-sm font-body leading-relaxed select-text">
+                <p className="w-full bg-black/10 rounded-xl p-3 text-cream-100 text-sm font-body leading-relaxed select-text border border-white/5">
                   {line.text || ''}
                 </p>
               </div>
@@ -481,13 +498,13 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
 
       {/* Annotation Modal */}
       {showAnnotationModal && (
-        <div className="fixed inset-0 bg-sleep-950/30 backdrop-blur-sm flex items-center justify-center z-50">
-          <div className="bg-white/95 backdrop-blur-lg border-2 border-cream-300/50 rounded-3xl p-6 w-full max-w-md shadow-dream">
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-[#1b120c]/95 backdrop-blur-lg border border-white/10 rounded-[28px] p-6 w-full max-w-md shadow-dream text-cream-100">
             <div className="flex items-center justify-between mb-6">
-              <h3 className="text-lg font-display font-bold text-sleep-900">Add TTS Annotation</h3>
+              <h3 className="text-lg font-display font-bold text-cream-100">Add TTS Annotation</h3>
               <button
                 onClick={() => setShowAnnotationModal(false)}
-                className="text-sleep-400 hover:text-sleep-800 transition-colors p-1.5 rounded-xl"
+                className="text-cream-400/65 hover:text-cream-100 transition-colors p-1.5 rounded-xl"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -497,10 +514,10 @@ const ScriptEditorScreen = ({ script, onBack, user, onSave, onScriptUpdate, onPl
                 <button
                   key={index}
                   onClick={() => addAnnotationToLine(selectedLineId, option.name)}
-                  className="flex items-center gap-3 p-3.5 bg-cream-100/80 border-2 border-cream-300/50 rounded-2xl hover:border-dream-glow/30 hover:bg-dream-stardust/20 transition-all active:scale-[0.97]"
+                  className="flex items-center gap-3 p-3.5 bg-[#24170f]/85 border border-white/10 rounded-2xl hover:border-dream-glow/30 hover:bg-[#2c1d13] transition-all active:scale-[0.97]"
                 >
                   <span className="text-xl">{option.icon}</span>
-                  <span className="text-sleep-900 font-display font-semibold text-sm">{option.label}</span>
+                  <span className="text-cream-100 font-display font-semibold text-sm">{option.label}</span>
                 </button>
               ))}
             </div>

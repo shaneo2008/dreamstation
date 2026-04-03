@@ -521,12 +521,12 @@ const AIGenerationForm = ({
               {isGenerating ? (
                 <>
                   <Wand2 className="mr-2 h-4 w-4 animate-spin" />
-                  Generating Script...
+                  Generating Story...
                 </>
               ) : (
                 <>
                   <Wand2 className="mr-2 h-4 w-4" />
-                  Generate AI Script
+                  Generate AI Story
                 </>
               )}
             </Button>

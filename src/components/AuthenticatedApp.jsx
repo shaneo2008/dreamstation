@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Search, BookOpen, Library, User, Plus, Edit, Play, Trash2, PawPrint, Moon } from 'lucide-react';
+import { BookOpen, Library, User, Plus, Edit, Trash2, PawPrint, Moon, MoreHorizontal, X } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import ScriptEditorScreen from './ScriptEditorScreen';
 import OptimizedCreateScreen from './OptimizedCreateScreen';
@@ -15,6 +15,29 @@ import { loadSavedScripts, loadScript, deleteScript } from '../services/scriptSa
 import { generateAIScript } from '../services/aiScriptGenerationService';
 import { autoAssignVoices } from '../services/cartesiaVoiceService';
 import { db } from '../lib/supabase';
+
+const getLineOrder = (line, fallbackIndex = 0) => {
+  const candidates = [
+    line?.lineNumber,
+    line?.line_number,
+    line?.line_index != null ? Number(line.line_index) + 1 : null,
+    line?.index != null ? Number(line.index) + 1 : null,
+    fallbackIndex + 1,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return fallbackIndex + 1;
+};
+
+const sortLinesByOrder = (lines = []) => (
+  [...lines].sort((a, b) => getLineOrder(a) - getLineOrder(b))
+);
 
 const AuthenticatedApp = () => {
   const { user } = useAuth();
@@ -159,11 +182,11 @@ const AuthenticatedApp = () => {
         setShowScriptEditor(true);
         setActiveTab('create'); // Switch to create tab to show script editor
       } else {
-        alert('Error loading script: ' + result.error);
+        alert('Error loading story: ' + result.error);
       }
     } catch (error) {
       console.error('Error loading script:', error);
-      alert('Error loading script. Please try again.');
+      alert('Error loading story. Please try again.');
     }
   };
 
@@ -183,14 +206,14 @@ const AuthenticatedApp = () => {
       if (result.success) {
         setSavedScripts(prev => prev.filter(s => s.id !== scriptId));
         console.log('✅ Script deleted successfully from UI');
-        alert('Script deleted successfully.');
+        alert('Story deleted successfully.');
       } else {
         console.error('❌ Delete failed:', result.error);
-        alert('Error deleting script: ' + result.error);
+        alert('Error deleting story: ' + result.error);
       }
     } catch (error) {
       console.error('❌ Error deleting script:', error);
-      alert('Error deleting script. Please try again.');
+      alert('Error deleting story. Please try again.');
     }
   };
 
@@ -202,10 +225,48 @@ const AuthenticatedApp = () => {
   const [playTonightScript, setPlayTonightScript] = useState(null);
   const [playTonightNote, setPlayTonightNote] = useState('');
   const [playTonightLoading, setPlayTonightLoading] = useState(false);
+  const [openLibraryMenuId, setOpenLibraryMenuId] = useState(null);
 
   const handlePlayTonight = (script) => {
     setPlayTonightScript(script);
     setPlayTonightNote('');
+  };
+
+  const closePlayTonightModal = () => {
+    setPlayTonightScript(null);
+    setPlayTonightNote('');
+  };
+
+  const handleJustPlay = () => {
+    if (!playTonightScript?.audioUrl) return;
+    handlePlayAudio({
+      audioUrl: playTonightScript.audioUrl,
+      title: playTonightScript.title,
+      scriptLines: playTonightScript.lines,
+      timingMetadata: playTonightScript.timingMetadata
+    });
+    closePlayTonightModal();
+  };
+
+  const getStorySummary = (script) => {
+    const summary = script?.metadata?.summary || script?.metadata?.storySummary || script?.metadata?.description || script?.metadata?.concept;
+    if (summary) return summary;
+    const firstLine = script?.lines?.find((line) => line?.text?.trim())?.text?.trim();
+    if (firstLine) {
+      return firstLine.length > 140 ? `${firstLine.slice(0, 137)}…` : firstLine;
+    }
+    return 'Ready when you are for a calm bedtime listen.';
+  };
+
+  const getStoryDateLabel = (script) => {
+    const dateValue = script?.lastModified || script?.createdAt;
+    if (!dateValue) return 'Saved recently';
+    const formattedDate = new Date(dateValue);
+    return `Updated ${formattedDate.toLocaleDateString(undefined, {
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric'
+    })}`;
   };
 
   const confirmPlayTonight = async () => {
@@ -227,13 +288,13 @@ const AuthenticatedApp = () => {
         parent_note: playTonightNote.trim() || null,
         playback_count_14d: playedBefore ? count : null,
       });
-      setPlayTonightScript(null);
-      setPlayTonightNote('');
       handlePlayAudio({
         audioUrl: playTonightScript.audioUrl,
         title: playTonightScript.title,
         scriptLines: playTonightScript.lines,
+        timingMetadata: playTonightScript.timingMetadata,
       });
+      closePlayTonightModal();
     } catch (err) {
       console.error('Failed to start playback session:', err);
       alert('Could not start session. Please try again.');
@@ -389,12 +450,15 @@ const AuthenticatedApp = () => {
                 console.log('Generated script:', result.data.script);
                 console.log('Script lines:', result.data.script.lines);
 
+                const orderedGeneratedLines = sortLinesByOrder(result.data.script.lines || []);
+
                 // Transform AI-generated script to match script editor format
                 const transformedScript = {
                   id: result.script_id,  // Use existing n8n-created record ID to avoid duplicate
                   title: result.data.script.title,
-                  lines: result.data.script.lines.map((line, index) => ({
-                    id: index + 1,
+                  lines: orderedGeneratedLines.map((line, index) => ({
+                    id: line.id || getLineOrder(line, index),
+                    lineNumber: getLineOrder(line, index),
                     type: line.type || 'dialogue',
                     speaker: line.speaker || 'Unknown',
                     text: line.text || '',
@@ -444,14 +508,14 @@ const AuthenticatedApp = () => {
                 setGeneratedScript(transformedScript);
 
                 // Show success message and navigate to script editor
-                alert(`Script generated successfully!\n\nTitle: ${transformedScript.title}\n\n${transformedScript.lines.length} lines generated.\n\n✅ Automatically saved to your library!\n\nOpening script editor...`);
+                alert(`Story generated successfully!\n\nTitle: ${transformedScript.title}\n\n${transformedScript.lines.length} lines generated.\n\n✅ Automatically saved to your library!\n\nOpening story editor...`);
 
                 // Navigate to script editor
                 setShowCreateStory(false);
                 setShowScriptEditor(true);
 
               } else {
-                alert('Story generated but no script data received. Check console for details.');
+                alert('Story generated but no story data was received. Check console for details.');
               }
 
             } catch (error) {
@@ -468,15 +532,15 @@ const AuthenticatedApp = () => {
 
     // Default create screen when showCreateStory is false
     return (
-      <div className="min-h-full px-6 py-8 animate-fade-in">
+      <div className="min-h-full px-5 sm:px-6 py-6 sm:py-8 animate-fade-in text-cream-100">
         <div className="text-center mb-8">
           <h1 className="text-3xl md:text-4xl font-display font-bold mb-3 gradient-text">Create Your Story</h1>
-          <p className="text-sleep-500 text-lg font-body">Where your child's imagination becomes a bedtime story ✨</p>
+          <p className="text-cream-300/75 text-lg font-body">Where your child's imagination becomes a bedtime story ✨</p>
         </div>
 
-        <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-6 mb-6 shadow-card">
-          <h2 className="text-xl font-display font-semibold mb-4 text-sleep-900">Ready to Create?</h2>
-          <p className="text-sleep-500 mb-6 font-body">Use our advanced AI-powered story generator to bring your stories to life.</p>
+        <div className="bg-[#24170f]/80 backdrop-blur-md border border-white/10 rounded-[24px] p-6 mb-6 shadow-card">
+          <h2 className="text-xl font-display font-semibold mb-4 text-cream-100">Ready to Create?</h2>
+          <p className="text-cream-300/75 mb-6 font-body">Use our advanced AI-powered story generator to bring your stories to life.</p>
           <button
             onClick={() => {
               // Gate: if no child profile exists and user has had their free story, show mode selection
@@ -504,21 +568,21 @@ const AuthenticatedApp = () => {
      Library Screen — with Supabase load/delete
      ───────────────────────────────────────────── */
   const renderLibraryScreen = () => (
-    <div className="min-h-full px-4 sm:px-6 py-5 sm:py-8 animate-fade-in">
+    <div className="min-h-full px-4 sm:px-6 py-5 sm:py-8 animate-fade-in text-cream-100">
       <div className="text-center mb-5 sm:mb-8">
         <h1 className="text-2xl sm:text-3xl md:text-4xl font-display font-bold mb-2 sm:mb-3 gradient-text">Your Library</h1>
-        <p className="text-sleep-500 text-sm sm:text-lg font-body">Manage your saved story creations</p>
+        <p className="text-cream-300/75 text-sm sm:text-lg font-body">Manage your saved story creations</p>
       </div>
 
       {isLoadingScripts ? (
-        <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-6 text-center shadow-card">
+        <div className="bg-[#24170f]/80 backdrop-blur-md border border-white/10 rounded-[24px] p-6 text-center shadow-card">
           <div className="animate-spin text-2xl mb-4">⏳</div>
-          <p className="text-sleep-500 font-body">Loading your stories...</p>
+          <p className="text-cream-300/75 font-body">Loading your stories...</p>
         </div>
       ) : savedScripts.length === 0 ? (
-        <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-6 text-center shadow-card">
-          <h2 className="text-lg sm:text-xl font-display font-semibold mb-4 text-sleep-900">No Saved Stories</h2>
-          <p className="text-sleep-500 mb-6 font-body text-sm sm:text-base">You haven't saved any stories yet. Create and save your first story to see it here.</p>
+        <div className="bg-[#24170f]/80 backdrop-blur-md border border-white/10 rounded-[24px] p-6 text-center shadow-card">
+          <h2 className="text-lg sm:text-xl font-display font-semibold mb-4 text-cream-100">No Saved Stories</h2>
+          <p className="text-cream-300/75 mb-6 font-body text-sm sm:text-base">You haven't saved any stories yet. Create and save your first story to see it here.</p>
           <button
             onClick={() => setActiveTab('create')}
             className="w-full sm:w-auto bg-dream-glow hover:bg-dream-aurora text-white font-display font-bold py-3.5 sm:py-3 px-6 rounded-2xl transition-all duration-200 shadow-glow-sm active:scale-[0.98] text-sm sm:text-base"
@@ -529,10 +593,10 @@ const AuthenticatedApp = () => {
       ) : (
         <div className="space-y-4">
           <div className="flex items-center justify-between mb-4 sm:mb-6">
-            <h2 className="text-lg sm:text-xl font-display font-semibold text-sleep-900">Saved Stories ({savedScripts.length})</h2>
+            <h2 className="text-lg sm:text-xl font-display font-semibold text-cream-100">Saved Stories ({savedScripts.length})</h2>
             <button
               onClick={loadUserScripts}
-              className="px-3 sm:px-4 py-2 bg-white/80 hover:bg-white border-2 border-cream-300/50 text-sleep-600 hover:text-sleep-900 rounded-xl transition-all font-display font-semibold text-xs sm:text-sm"
+              className="px-3 sm:px-4 py-2 bg-[#2b1d13]/85 hover:bg-[#342318] border border-white/10 text-cream-300 hover:text-cream-100 rounded-xl transition-all font-display font-semibold text-xs sm:text-sm"
             >
               🔄 Refresh
             </button>
@@ -540,81 +604,61 @@ const AuthenticatedApp = () => {
 
           <div className="grid gap-3 sm:gap-4">
             {savedScripts.map((script) => (
-              <div key={script.id} className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-4 sm:p-6 shadow-card">
-                {/* Title & Metadata — always full width */}
-                <div className="mb-3 sm:mb-4">
-                  <h3 className="text-base sm:text-lg font-display font-bold text-sleep-900 mb-2 line-clamp-2">{script.title}</h3>
-                  <div className="flex flex-wrap gap-x-3 gap-y-1 text-xs sm:text-sm text-sleep-500 mb-2 font-body">
-                    <span>📝 {script.metadata?.totalLines || script.lines?.length || 0} lines</span>
-                    <span>👥 {script.metadata?.charactersCount || 0} chars</span>
-                    <span>💬 {script.metadata?.dialogueCount || 0} dialogue</span>
-                    <span>📖 {script.metadata?.narrationCount || 0} narration</span>
+              <div key={script.id} className="bg-[#24170f]/80 backdrop-blur-md border border-white/10 rounded-[24px] p-4 sm:p-6 shadow-card">
+                <div className="flex items-start gap-3 mb-4">
+                  <div className="flex-1 min-w-0">
+                    <div className="text-[11px] uppercase tracking-[0.18em] text-cream-400/60 font-body mb-2">Saved story</div>
+                    <h3 className="text-lg sm:text-xl font-display font-semibold text-cream-100 leading-snug mb-2 break-words">{script.title}</h3>
+                    <p className="text-sm text-cream-300/80 font-body leading-relaxed mb-3 line-clamp-2">{getStorySummary(script)}</p>
+                    <div className="text-xs text-cream-400/65 font-body">{getStoryDateLabel(script)}</div>
                   </div>
-                  <div className="text-xs text-sleep-400 font-body">
-                    {script.lastModified ? (
-                      <>Last modified: {new Date(script.lastModified).toLocaleDateString()} at {new Date(script.lastModified).toLocaleTimeString()}</>
-                    ) : script.createdAt ? (
-                      <>Created: {new Date(script.createdAt).toLocaleDateString()}</>
-                    ) : (
-                      'No date available'
+                  <div className="relative shrink-0">
+                    <button
+                      onClick={() => setOpenLibraryMenuId(openLibraryMenuId === script.id ? null : script.id)}
+                      className="h-10 w-10 rounded-xl border border-white/10 bg-[#2b1d13]/85 text-cream-300 hover:text-cream-100 hover:bg-[#342318] transition-all flex items-center justify-center"
+                      title="More actions"
+                    >
+                      <MoreHorizontal className="w-4 h-4" />
+                    </button>
+                    {openLibraryMenuId === script.id && (
+                      <div className="absolute right-0 top-12 w-44 rounded-2xl border border-white/10 bg-[#1b120c]/95 backdrop-blur-md shadow-dream overflow-hidden z-20">
+                        <button
+                          onClick={() => {
+                            setOpenLibraryMenuId(null);
+                            handleLoadScript(script.id);
+                          }}
+                          className="w-full px-4 py-3 text-left text-sm text-cream-200 hover:bg-white/5 transition-colors flex items-center gap-2"
+                        >
+                          <Edit className="w-4 h-4" />
+                          Edit story
+                        </button>
+                        <button
+                          onClick={() => {
+                            setOpenLibraryMenuId(null);
+                            handleDeleteScript(script.id);
+                          }}
+                          className="w-full px-4 py-3 text-left text-sm text-danger hover:bg-white/5 transition-colors flex items-center gap-2"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                          Delete story
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>
 
-                {/* Action buttons — full-width row on mobile */}
-                <div className="flex items-center gap-2">
+                <div className="space-y-3">
                   <button
-                    onClick={() => handleLoadScript(script.id)}
-                    className="flex-1 sm:flex-none px-4 py-2.5 sm:py-2 bg-dream-glow hover:bg-dream-aurora text-white rounded-xl transition-all flex items-center justify-center gap-2 font-display font-semibold text-sm active:scale-[0.97]"
-                    title="Edit Script"
+                    onClick={() => script.hasAudio && script.audioUrl ? handlePlayTonight(script) : handleLoadScript(script.id)}
+                    className="w-full px-4 py-3.5 bg-dream-glow hover:bg-dream-aurora text-white rounded-2xl transition-all flex items-center justify-center gap-2 font-display font-semibold text-sm sm:text-base active:scale-[0.97] shadow-glow-sm"
+                    title={script.hasAudio && script.audioUrl ? 'Play as tonight\'s bedtime story' : 'Open in editor'}
                   >
-                    <Edit className="w-4 h-4 shrink-0" />
-                    <span className="truncate">Edit</span>
+                    <Moon className="w-4 h-4 shrink-0" />
+                    <span className="truncate">{script.hasAudio && script.audioUrl ? 'Play Tonight' : 'Open in Editor'}</span>
                   </button>
-
-                  {/* Show Play Tonight + Play Audio buttons if script has audio */}
-                  {script.hasAudio && script.audioUrl ? (
-                    <>
-                      <button
-                        onClick={() => handlePlayTonight(script)}
-                        className="flex-1 sm:flex-none px-4 py-2.5 sm:py-2 bg-dream-glow hover:bg-dream-aurora text-white rounded-xl transition-all flex items-center justify-center gap-2 font-display font-semibold text-sm active:scale-[0.97]"
-                        title="Play as tonight's bedtime story"
-                      >
-                        <Moon className="w-4 h-4 shrink-0" />
-                        <span className="truncate">Tonight</span>
-                      </button>
-                      <button
-                        onClick={() => {
-                          handlePlayAudio({
-                            audioUrl: script.audioUrl,
-                            title: script.title,
-                            scriptLines: script.lines,
-                            timingMetadata: script.timingMetadata
-                          });
-                        }}
-                        className="flex-none px-3 py-2.5 sm:py-2 bg-success/80 hover:bg-success text-white rounded-xl transition-all flex items-center justify-center font-display font-semibold text-sm active:scale-[0.97]"
-                        title={`Preview audio (${script.audioDuration ? Math.round(script.audioDuration) + 's' : ''})`}
-                      >
-                        <Play className="w-4 h-4" />
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => alert('TTS generation coming soon!')}
-                      className="flex-1 sm:flex-none px-4 py-2.5 sm:py-2 bg-pastel-lavender hover:bg-pastel-lavender/80 text-white rounded-xl transition-all flex items-center justify-center gap-2 font-display font-semibold text-sm active:scale-[0.97]"
-                      title="Generate Audio"
-                    >
-                      <Play className="w-4 h-4 shrink-0" />
-                      <span className="truncate">TTS</span>
-                    </button>
-                  )}
-                  <button
-                    onClick={() => handleDeleteScript(script.id)}
-                    className="px-3 py-2.5 sm:py-2 bg-danger hover:bg-danger/80 text-white rounded-xl transition-all font-display font-semibold text-sm active:scale-[0.97]"
-                    title="Delete Script"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {!script.hasAudio || !script.audioUrl ? (
+                    <div className="text-xs text-cream-400/65 font-body">Generate full story audio in the editor before tonight's playback.</div>
+                  ) : null}
                 </div>
               </div>
             ))}
@@ -624,34 +668,44 @@ const AuthenticatedApp = () => {
 
       {/* Play Tonight Modal */}
       {playTonightScript && (
-        <div className="fixed inset-0 bg-sleep-950/40 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6">
-          <div className="bg-white/95 backdrop-blur-lg border-2 border-cream-300/50 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-dream max-h-[85vh] overflow-y-auto">
-            <div className="flex items-center gap-2 mb-1">
-              <Moon className="w-4 h-4 text-dream-glow" />
-              <h3 className="text-lg font-display font-bold text-sleep-900">Play Tonight</h3>
+        <div className="fixed inset-0 bg-black/55 backdrop-blur-sm flex items-center justify-center z-50 px-4 py-6">
+          <div className="bg-[#1b120c]/95 backdrop-blur-lg border border-white/10 rounded-[28px] p-5 sm:p-6 max-w-md w-full shadow-dream max-h-[85vh] overflow-y-auto text-cream-100">
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <div className="flex items-center gap-2">
+                <Moon className="w-4 h-4 text-dream-glow" />
+                <h3 className="text-lg font-display font-bold text-cream-100">Play Tonight</h3>
+              </div>
+              <button
+                onClick={closePlayTonightModal}
+                className="h-9 w-9 rounded-xl border border-white/10 bg-white/5 text-cream-300 hover:text-cream-100 hover:bg-white/10 transition-all flex items-center justify-center"
+                title="Close"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
-            <p className="text-sm text-sleep-500 mb-4 font-body line-clamp-1">{playTonightScript.title}</p>
+            <p className="text-sm text-cream-300/75 mb-5 font-body leading-relaxed">{playTonightScript.title}</p>
             <div className="mb-5">
-              <label className="block text-xs font-display font-semibold text-sleep-500 mb-1">Anything on their mind tonight? <span className="font-normal">(optional)</span></label>
+              <label className="block text-xs font-display font-semibold text-cream-300/75 mb-2">Anything on their mind tonight? <span className="font-normal">(optional)</span></label>
               <textarea
                 value={playTonightNote}
                 onChange={(e) => setPlayTonightNote(e.target.value)}
                 placeholder="A note just for you — mood, big day, anything unusual…"
                 rows={3}
-                className="w-full bg-white border-2 border-cream-300/60 rounded-2xl px-4 py-3 text-sm text-sleep-900 placeholder-sleep-400 outline-none resize-none focus:border-dream-glow/50 transition-all font-body"
+                className="w-full bg-[#140e0a]/90 border-2 border-white/10 rounded-2xl px-4 py-3 text-sm text-cream-100 placeholder:text-cream-400/50 outline-none resize-none focus:border-dream-glow/50 transition-all font-body"
               />
+              <p className="mt-3 text-xs text-cream-400/65 font-body leading-relaxed">Start Story logs tonight's session for your morning reflection. Just Play skips this.</p>
             </div>
-            <div className="flex gap-3">
+            <div className="flex items-center justify-between gap-3 pt-1">
               <button
-                onClick={() => { setPlayTonightScript(null); setPlayTonightNote(''); }}
-                className="flex-1 py-3 bg-cream-200 hover:bg-cream-300 text-sleep-700 rounded-xl font-display font-semibold text-sm transition-colors"
+                onClick={handleJustPlay}
+                className="text-sm font-body font-semibold text-cream-300 hover:text-cream-100 transition-colors underline underline-offset-4"
               >
-                Cancel
+                Just Play
               </button>
               <button
                 onClick={confirmPlayTonight}
                 disabled={playTonightLoading || !activeChildId}
-                className="flex-1 py-3 bg-dream-glow hover:bg-dream-aurora text-white rounded-xl font-display font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="min-w-[148px] py-3 px-5 bg-dream-glow hover:bg-dream-aurora text-white rounded-2xl font-display font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 shadow-glow-sm"
               >
                 {playTonightLoading ? (
                   <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
@@ -669,16 +723,16 @@ const AuthenticatedApp = () => {
 
       {/* Custom Delete Confirmation Modal */}
       {deleteConfirmation && (
-        <div className="fixed inset-0 bg-sleep-950/30 backdrop-blur-sm flex items-center justify-center z-50 px-4">
-          <div className="bg-white/95 backdrop-blur-lg border-2 border-cream-300/50 rounded-3xl p-5 sm:p-6 max-w-md w-full shadow-dream">
-            <h3 className="text-lg sm:text-xl font-display font-bold text-sleep-900 mb-3 sm:mb-4">Delete Script</h3>
-            <p className="text-sleep-500 mb-5 sm:mb-6 font-body text-sm sm:text-base">
-              Are you sure you want to delete this script? This will also delete any saved audio.
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+          <div className="bg-[#1b120c]/95 backdrop-blur-lg border border-white/10 rounded-[28px] p-5 sm:p-6 max-w-md w-full shadow-dream">
+            <h3 className="text-lg sm:text-xl font-display font-bold text-cream-100 mb-3 sm:mb-4">Delete Story</h3>
+            <p className="text-cream-300/75 mb-5 sm:mb-6 font-body text-sm sm:text-base">
+              Are you sure you want to delete this story? This will also delete any saved audio.
             </p>
             <div className="flex gap-3 justify-end">
               <button
                 onClick={cancelDelete}
-                className="flex-1 sm:flex-none px-4 py-3 sm:py-2.5 bg-cream-200 hover:bg-cream-300 text-sleep-700 rounded-xl transition-colors font-display font-semibold text-sm"
+                className="flex-1 sm:flex-none px-4 py-3 sm:py-2.5 bg-[#2b1d13] hover:bg-[#342318] text-cream-200 rounded-xl transition-colors font-display font-semibold text-sm border border-white/10"
               >
                 Cancel
               </button>
@@ -704,19 +758,19 @@ const AuthenticatedApp = () => {
      Main Layout
      ───────────────────────────────────────────── */
   return (
-    <div className="min-h-screen bg-cream-100 flex flex-col relative overflow-hidden font-body">
+    <div className="min-h-screen bg-sleep-gradient flex flex-col relative overflow-hidden font-body text-cream-100">
       {/* Ambient background glow */}
       <div className="absolute inset-0 bg-sleep-glow pointer-events-none" />
 
       {/* Top Header */}
-      <header className="relative z-20 bg-white/80 backdrop-blur-sm border-b border-cream-300/50 px-5 py-3">
+      <header className="relative z-20 bg-[#1b120c]/82 backdrop-blur-md border-b border-white/10 px-5 py-3">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-2">
             <Moon className="w-5 h-5 text-dream-glow" />
-            <h1 className="text-xl font-display font-bold text-sleep-900">Dreamstation</h1>
+            <h1 className="text-xl font-display font-bold text-cream-100">Dreamstation</h1>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-sleep-400 font-body hidden sm:inline">
+            <span className="text-xs text-cream-400/65 font-body hidden sm:inline">
               {user?.email}
             </span>
           </div>
@@ -765,7 +819,7 @@ const AuthenticatedApp = () => {
 
       {/* ── Global Mini Player (Spotify-style) ── */}
       {globalAudio && !showExpandedPlayer && (
-        <div className="fixed left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-cream-300/50 z-50" style={{ bottom: '68px' }}>
+        <div className="fixed left-0 right-0 bg-[#1b120c]/95 backdrop-blur-md border-t border-white/10 z-50" style={{ bottom: '68px' }}>
           <MiniPlayer
             audioRef={globalAudioRef}
             title={globalAudio.title}
@@ -787,13 +841,13 @@ const AuthenticatedApp = () => {
       )}
 
       {/* ── Bottom Navigation ── */}
-      <nav className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-cream-300/50 px-4 py-3 z-50">
+      <nav className="fixed bottom-0 left-0 right-0 bg-[#1b120c]/95 backdrop-blur-md border-t border-white/10 px-4 py-3 z-50">
         <div className="flex justify-around items-center max-w-md mx-auto">
           <button
             onClick={() => setActiveTab('create')}
             className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 ${activeTab === 'create'
-              ? 'text-dream-glow bg-dream-stardust/50'
-              : 'text-sleep-400 hover:text-sleep-700'
+              ? 'text-dream-glow bg-dream-stardust/10'
+              : 'text-cream-400/70 hover:text-cream-100'
               }`}
           >
             <BookOpen className="w-5 h-5" />
@@ -802,8 +856,8 @@ const AuthenticatedApp = () => {
           <button
             onClick={() => setActiveTab('buddy')}
             className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 ${activeTab === 'buddy'
-              ? 'text-dream-glow bg-dream-stardust/50'
-              : 'text-sleep-400 hover:text-sleep-700'
+              ? 'text-dream-glow bg-dream-stardust/10'
+              : 'text-cream-400/70 hover:text-cream-100'
               }`}
           >
             <PawPrint className="w-5 h-5" />
@@ -812,8 +866,8 @@ const AuthenticatedApp = () => {
           <button
             onClick={() => setActiveTab('library')}
             className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 ${activeTab === 'library'
-              ? 'text-dream-glow bg-dream-stardust/50'
-              : 'text-sleep-400 hover:text-sleep-700'
+              ? 'text-dream-glow bg-dream-stardust/10'
+              : 'text-cream-400/70 hover:text-cream-100'
               }`}
           >
             <Library className="w-5 h-5" />
@@ -822,8 +876,8 @@ const AuthenticatedApp = () => {
           <button
             onClick={() => setActiveTab('account')}
             className={`flex flex-col items-center gap-1 px-3 py-2 rounded-2xl transition-all duration-200 ${activeTab === 'account'
-              ? 'text-dream-glow bg-dream-stardust/50'
-              : 'text-sleep-400 hover:text-sleep-700'
+              ? 'text-dream-glow bg-dream-stardust/10'
+              : 'text-cream-400/70 hover:text-cream-100'
               }`}
           >
             <User className="w-5 h-5" />

@@ -57,7 +57,7 @@ export default function ProgressRing({ timeLeft, totalTime, themeColor, size = 2
         </motion.span>
         {isImpatient && (
           <motion.span
-            className="text-xs font-semibold text-muted-foreground mt-0.5"
+            className="text-xs font-body font-semibold text-cream-300/75 mt-0.5"
             initial={{ opacity: 0, y: 5 }}
             animate={{ opacity: 1, y: 0 }}
           >

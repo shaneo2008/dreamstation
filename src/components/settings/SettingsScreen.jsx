@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react'
-import { User, Bell, BookOpen, Heart, ChevronRight, LogOut, ArrowLeft, RefreshCw } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { User, Bell, BookOpen, Heart, ChevronRight, LogOut, RefreshCw } from 'lucide-react'
 import { useAuth } from '../../contexts/AuthContext'
 import { db } from '../../lib/supabase'
 import ChildProfileEdit from './ChildProfileEdit'
@@ -24,43 +24,51 @@ export default function SettingsScreen() {
   const [activeScreen, setActiveScreen] = useState('main') // main | profile | notifications | briefs | reactions | baseline | upgrade
   const [selectedChildId, setSelectedChildId] = useState(null)
   const [selectedChildName, setSelectedChildName] = useState('')
-  const [baselineNeeded, setBaselineNeeded] = useState(false)
+  const [baselineDueMap, setBaselineDueMap] = useState({})
+  const [selectedBaselineWeekNumber, setSelectedBaselineWeekNumber] = useState(3)
 
-  useEffect(() => {
-    const load = async () => {
-      if (!user?.id) return
-      try {
-        const profiles = await db.getChildProfiles(user.id)
-        setChildProfiles(profiles || [])
+  const loadSettingsData = useCallback(async () => {
+    if (!user?.id) return
+    try {
+      const profiles = await db.getChildProfiles(user.id)
+      setChildProfiles(profiles || [])
 
-        // Check if Week 3 baseline is needed for any child
-        if (profiles && profiles.length > 0) {
-          for (const profile of profiles) {
-            if (profile.mode !== 'full_programme') continue
-            try {
-              const baselines = await db.getClinicalBaselines(profile.id)
-              const hasWeek0 = baselines.some(b => b.week_number === 0)
-              const hasWeek3 = baselines.some(b => b.week_number === 3)
-              if (hasWeek0 && !hasWeek3) {
-                const week0 = baselines.find(b => b.week_number === 0)
-                const daysSince = (Date.now() - new Date(week0.captured_at).getTime()) / (1000 * 60 * 60 * 24)
-                if (daysSince >= 21) {
-                  setBaselineNeeded(true)
-                  setSelectedChildId(profile.id)
-                  setSelectedChildName(profile.name)
-                }
+      const dueMap = {}
+
+      if (profiles && profiles.length > 0) {
+        for (const profile of profiles) {
+          if (profile.mode !== 'full_programme') continue
+          try {
+            const baselines = await db.getClinicalBaselines(profile.id)
+            const hasWeek0 = baselines.some(b => b.week_number === 0)
+            if (!hasWeek0 || baselines.length === 0) continue
+
+            const latestBaseline = baselines[baselines.length - 1]
+            const daysSinceLatest = (Date.now() - new Date(latestBaseline.captured_at).getTime()) / (1000 * 60 * 60 * 24)
+
+            if (daysSinceLatest >= 21) {
+              const latestWeekNumber = Number.isFinite(Number(latestBaseline.week_number)) ? Number(latestBaseline.week_number) : 0
+
+              dueMap[profile.id] = {
+                nextWeekNumber: Math.max(3, latestWeekNumber + 3),
+                daysSinceLatest: Math.floor(daysSinceLatest),
               }
-            } catch (e) {
-              console.warn('Could not check baselines:', e.message)
             }
+          } catch (e) {
+            console.warn('Could not check baselines:', e.message)
           }
         }
-      } catch (err) {
-        console.error('Error loading settings data:', err)
       }
+
+      setBaselineDueMap(dueMap)
+    } catch (err) {
+      console.error('Error loading settings data:', err)
     }
-    load()
   }, [user?.id])
+
+  useEffect(() => {
+    loadSettingsData()
+  }, [loadSettingsData])
 
   const openChildProfile = (child) => {
     setSelectedChildId(child.id)
@@ -89,6 +97,7 @@ export default function SettingsScreen() {
   const openBaseline = (child) => {
     setSelectedChildId(child.id)
     setSelectedChildName(child.name)
+    setSelectedBaselineWeekNumber(baselineDueMap[child.id]?.nextWeekNumber || 3)
     setActiveScreen('baseline')
   }
 
@@ -96,7 +105,7 @@ export default function SettingsScreen() {
     setActiveScreen('main')
     // Reload profiles in case edits were made
     if (user?.id) {
-      db.getChildProfiles(user.id).then(p => setChildProfiles(p || []))
+      loadSettingsData()
     }
   }
 
@@ -114,47 +123,56 @@ export default function SettingsScreen() {
     return <MorningReactionHistory childId={selectedChildId} childName={selectedChildName} onBack={goBack} />
   }
   if (activeScreen === 'baseline' && selectedChildId) {
-    return <BaselineReCapture childId={selectedChildId} userId={user?.id} childName={selectedChildName} onBack={goBack} />
+    return <BaselineReCapture childId={selectedChildId} userId={user?.id} childName={selectedChildName} weekNumber={selectedBaselineWeekNumber} onBack={goBack} />
   }
 
   // Main settings screen
   return (
-    <div className="min-h-full px-5 py-6 animate-fade-in">
+    <div className="min-h-full px-5 py-6 animate-fade-in text-cream-100">
       <div className="text-center mb-6">
-        <h1 className="text-2xl md:text-3xl font-display font-bold mb-2 gradient-text">Settings</h1>
-        <p className="text-sleep-500 text-sm font-body">Manage your DreamStation experience</p>
+        <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-[#1b120c]/88 px-3 py-1.5 text-[11px] uppercase tracking-[0.16em] text-cream-400/65 font-body shadow-card backdrop-blur-md mb-4">
+          <span>Account</span>
+          <span className="text-cream-200">{childProfiles.length} profile{childProfiles.length === 1 ? '' : 's'}</span>
+        </div>
+        <h1 className="text-3xl md:text-4xl font-display font-bold mb-2 gradient-text">Settings</h1>
+        <p className="text-cream-300/75 text-sm font-body">Manage your DreamStation experience</p>
       </div>
 
       <div className="max-w-lg mx-auto space-y-4">
-        {/* Account info */}
-        <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card">
+        <div className="glass-card-solid p-5 text-cream-100">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 bg-dream-stardust/40 rounded-2xl flex items-center justify-center">
+            <div className="w-11 h-11 bg-dream-glow/12 rounded-2xl border border-dream-glow/20 flex items-center justify-center shadow-card">
               <User className="w-5 h-5 text-dream-glow" />
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-display font-bold text-sleep-900 truncate">{user?.email}</p>
-              <p className="text-[10px] text-sleep-400 font-mono truncate">{user?.id}</p>
+              <p className="text-sm font-display font-bold text-cream-100 truncate">{user?.email}</p>
+              <p className="text-[10px] text-cream-400/55 font-mono truncate">{user?.id}</p>
             </div>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-[#140e0a]/75 px-4 py-3">
+            <p className="text-xs uppercase tracking-[0.14em] text-cream-400/55 font-body mb-1">Signed in as</p>
+            <p className="text-sm text-cream-300/80 font-body leading-relaxed">Your account controls profiles, notifications, reflections, and weekly check-ins.</p>
           </div>
         </div>
 
-        {/* Child profiles */}
-        {childProfiles.map(child => (
-          <div key={child.id} className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card">
+        {childProfiles.map(child => {
+          const baselineDue = baselineDueMap[child.id]
+
+          return (
+          <div key={child.id} className="glass-card-solid p-5 text-cream-100">
             <div className="flex items-center gap-3 mb-4">
-              <div className="w-10 h-10 bg-pastel-peach/30 rounded-2xl flex items-center justify-center">
-                <Heart className="w-5 h-5 text-pastel-peach" />
+              <div className="w-11 h-11 bg-dream-glow/12 rounded-2xl border border-dream-glow/20 flex items-center justify-center shadow-card">
+                <Heart className="w-5 h-5 text-dream-glow" />
               </div>
               <div>
-                <h3 className="text-base font-display font-bold text-sleep-900">{child.name}'s Profile</h3>
-                <p className="text-xs text-sleep-500 font-body">
+                <h3 className="text-lg font-display font-bold text-cream-100">{child.name}'s Profile</h3>
+                <p className="text-xs text-cream-300/70 font-body">
                   Age {child.age} · {child.mode === 'full_programme' ? 'Full Programme' : 'Just Stories'}
                 </p>
               </div>
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-2">
               <SettingsRow icon={User} label="Edit Profile" onClick={() => openChildProfile(child)} />
               <SettingsRow icon={Bell} label="Notification Preferences" onClick={() => openNotifications(child)} />
 
@@ -162,10 +180,10 @@ export default function SettingsScreen() {
                 <>
                   <SettingsRow icon={BookOpen} label="Weekly Briefs" onClick={() => openBriefs(child)} />
                   <SettingsRow icon={BookOpen} label="Morning Reflections" onClick={() => openReactions(child)} />
-                  {baselineNeeded && child.id === selectedChildId && (
+                  {baselineDue && (
                     <SettingsRow
                       icon={RefreshCw}
-                      label="Week 3 Check-in"
+                      label={`Week ${baselineDue.nextWeekNumber} Snapshot`}
                       onClick={() => openBaseline(child)}
                       highlight
                     />
@@ -187,18 +205,18 @@ export default function SettingsScreen() {
               )}
             </div>
           </div>
-        ))}
+          )
+        })}
 
         {childProfiles.length === 0 && (
-          <div className="bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl p-5 shadow-card text-center">
-            <p className="text-sm text-sleep-500 font-body">No child profiles yet. Create a story to get started.</p>
+          <div className="glass-card-solid p-5 text-center text-cream-100">
+            <p className="text-sm text-cream-300/75 font-body">No child profiles yet. Create a story to get started.</p>
           </div>
         )}
 
-        {/* Sign out */}
         <button
           onClick={signOut}
-          className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-danger/10 hover:bg-danger/20 text-danger border-2 border-danger/20 rounded-2xl transition-all font-display font-bold text-sm active:scale-[0.98]"
+          className="w-full flex items-center justify-center gap-2 px-4 py-3.5 bg-[#3b241a]/88 hover:bg-[#45291d] text-[#F2A180] border border-[#8a4c37]/60 rounded-[20px] transition-all font-display font-bold text-sm shadow-card active:scale-[0.98]"
         >
           <LogOut className="w-4 h-4" />
           Sign Out
@@ -212,19 +230,21 @@ function SettingsRow({ icon: Icon, label, onClick, highlight }) {
   return (
     <button
       onClick={onClick}
-      className={`w-full flex items-center justify-between px-3 py-3 rounded-xl transition-all text-left ${
+      className={`w-full flex items-center justify-between px-3.5 py-3 rounded-2xl transition-all text-left border ${
         highlight
-          ? 'bg-dream-stardust/20 hover:bg-dream-stardust/30'
-          : 'hover:bg-cream-100/80'
+          ? 'bg-dream-glow/10 hover:bg-dream-glow/14 border-dream-glow/20'
+          : 'bg-[#140e0a]/72 hover:bg-[#1b120c] border-white/8'
       }`}
     >
       <div className="flex items-center gap-3">
-        <Icon className={`w-4 h-4 ${highlight ? 'text-dream-glow' : 'text-sleep-500'}`} />
-        <span className={`text-sm font-display font-semibold ${highlight ? 'text-dream-glow' : 'text-sleep-700'}`}>
+        <div className={`h-8 w-8 rounded-xl border flex items-center justify-center ${highlight ? 'border-dream-glow/20 bg-dream-glow/10' : 'border-white/8 bg-white/5'}`}>
+          <Icon className={`w-4 h-4 ${highlight ? 'text-dream-glow' : 'text-cream-300/72'}`} />
+        </div>
+        <span className={`text-sm font-display font-semibold ${highlight ? 'text-dream-glow' : 'text-cream-100'}`}>
           {label}
         </span>
       </div>
-      <ChevronRight className="w-4 h-4 text-sleep-400" />
+      <ChevronRight className={`w-4 h-4 ${highlight ? 'text-dream-glow/80' : 'text-cream-400/55'}`} />
     </button>
   )
 }

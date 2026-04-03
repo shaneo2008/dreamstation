@@ -214,12 +214,24 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
   const allAssigned = characters.length > 0 && assignedCount === characters.length;
   const progressPercent = characters.length > 0 ? (assignedCount / characters.length) * 100 : 0;
 
+  const getCharacterTint = (characterName = 'Narrator') => {
+    const tints = [
+      'bg-[#2f2118]/90 border-[#7f5138]/35',
+      'bg-[#262027]/90 border-[#665b78]/35',
+      'bg-[#213029]/90 border-[#4d7b68]/35',
+      'bg-[#33241d]/90 border-[#8a6750]/35',
+      'bg-[#27282f]/90 border-[#5b667c]/35',
+    ];
+    const hash = characterName.split('').reduce((total, char) => total + char.charCodeAt(0), 0);
+    return tints[hash % tints.length];
+  };
+
   /* ─────────────────────────────────────────────
      Characters Panel — shared between mobile & desktop
      ───────────────────────────────────────────── */
   const CharactersPanel = ({ onCharacterTap }) => (
-    <div className="bg-cream-100/60 border-2 border-cream-300/40 rounded-2xl p-4">
-      <h3 className="font-display font-bold text-sm mb-3 flex items-center gap-2 text-sleep-900">
+    <div className="bg-[#1b120c]/82 border border-white/10 rounded-[24px] p-4 sm:p-5 shadow-card">
+      <h3 className="font-display font-bold text-sm mb-3 flex items-center gap-2 text-cream-100">
         <User size={16} className="text-dream-glow" />
         Characters
       </h3>
@@ -233,15 +245,15 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
             <button
               key={charName}
               onClick={() => onCharacterTap(charName)}
-              className={`w-full text-left p-4 rounded-2xl transition-all active:scale-[0.98] ${selectedCharacter === charName
-                  ? 'bg-dream-stardust/30 border-2 border-dream-glow/30'
-                  : 'bg-white/60 border-2 border-cream-300/30 hover:border-cream-400'
+              className={`w-full text-left p-4 rounded-2xl transition-all active:scale-[0.98] border ${selectedCharacter === charName
+                  ? 'bg-dream-stardust/10 border-dream-glow/35 shadow-glow-sm'
+                  : `${getCharacterTint(charName)} hover:border-white/25`
                 }`}
             >
               <div className="flex justify-between items-center">
                 <div className="flex-1 min-w-0">
-                  <div className="font-display font-semibold text-base text-sleep-900">{charName}</div>
-                  <div className="text-xs text-sleep-400 font-body mt-0.5">{lineCount} lines</div>
+                  <div className="font-display font-semibold text-base text-cream-100">{charName}</div>
+                  <div className="text-xs text-cream-400/65 font-body mt-0.5">{lineCount} lines</div>
                 </div>
                 <div className="flex items-center gap-2 ml-3 shrink-0">
                   {assignedVoice ? (
@@ -252,7 +264,7 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
                       <Check size={16} className="text-success" />
                     </>
                   ) : (
-                    <ChevronRight size={16} className="text-sleep-400" />
+                    <ChevronRight size={16} className="text-cream-400/65" />
                   )}
                 </div>
               </div>
@@ -267,19 +279,19 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
      Voices Panel — shared between mobile & desktop
      ───────────────────────────────────────────── */
   const VoicesPanel = () => (
-    <div className="bg-cream-100/60 border-2 border-cream-300/40 rounded-2xl p-4">
+    <div className="bg-[#1b120c]/82 border border-white/10 rounded-[24px] p-4 sm:p-5 shadow-card">
       {/* Mobile back button */}
       <div className="md:hidden mb-3">
         <button
           onClick={() => setMobilePanel('characters')}
-          className="flex items-center gap-1.5 text-sleep-500 font-display font-semibold text-sm active:scale-[0.97]"
+          className="flex items-center gap-1.5 text-cream-300/75 font-display font-semibold text-sm active:scale-[0.97]"
         >
           <ArrowLeft size={16} />
           Back to Characters
         </button>
       </div>
 
-      <h3 className="font-display font-bold text-sm mb-1 flex items-center gap-2 text-sleep-900">
+      <h3 className="font-display font-bold text-sm mb-1 flex items-center gap-2 text-cream-100">
         <Mic size={16} className="text-dream-glow" />
         {selectedCharacter ? (
           <>Voices for <span className="text-dream-glow">{selectedCharacter}</span></>
@@ -288,7 +300,7 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
         )}
       </h3>
       {selectedCharacter && (
-        <p className="text-xs text-sleep-400 font-body mb-3">Tap a voice to assign it</p>
+        <p className="text-xs text-cream-400/65 font-body mb-3">Tap a voice to assign it</p>
       )}
 
       {/* Filters — stacked on mobile for comfortable tapping */}
@@ -296,7 +308,7 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
         <select
           value={voiceFilter.gender}
           onChange={(e) => setVoiceFilter(prev => ({ ...prev, gender: e.target.value }))}
-          className="w-full sm:w-auto px-4 py-3 sm:py-1.5 bg-white/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 text-sm font-display font-semibold focus:outline-none focus:border-dream-glow/50 transition-all"
+          className="w-full sm:w-auto px-4 py-3 sm:py-1.5 bg-[#140e0a]/90 border-2 border-white/10 rounded-xl text-cream-100 text-sm font-display font-semibold focus:outline-none focus:border-dream-glow/50 transition-all"
         >
           <option value="">All Genders</option>
           <option value="female">Female</option>
@@ -306,7 +318,7 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
         <select
           value={voiceFilter.style}
           onChange={(e) => setVoiceFilter(prev => ({ ...prev, style: e.target.value }))}
-          className="w-full sm:w-auto px-4 py-3 sm:py-1.5 bg-white/80 border-2 border-cream-300/60 rounded-xl text-sleep-900 text-sm font-display font-semibold focus:outline-none focus:border-dream-glow/50 transition-all"
+          className="w-full sm:w-auto px-4 py-3 sm:py-1.5 bg-[#140e0a]/90 border-2 border-white/10 rounded-xl text-cream-100 text-sm font-display font-semibold focus:outline-none focus:border-dream-glow/50 transition-all"
         >
           <option value="">All Styles</option>
           <option value="narrator">Narrator</option>
@@ -318,8 +330,8 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
 
       {/* Voice List — larger touch targets on mobile */}
       {/* Legend */}
-      <div className="flex items-center gap-3 mb-2 text-xs text-sleep-400 font-body">
-        <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-sleep-300/40"></span> Used by another character</span>
+      <div className="flex items-center gap-3 mb-2 text-xs text-cream-400/65 font-body">
+        <span className="flex items-center gap-1"><span className="inline-block w-2.5 h-2.5 rounded-full bg-sleep-600/70"></span> Used by another character</span>
       </div>
 
       <div className="space-y-2 max-h-[60vh] md:max-h-96 overflow-y-auto -mx-1 px-1">
@@ -334,31 +346,31 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
           return (
             <div
               key={voice.id}
-              className={`p-4 rounded-2xl transition-all border-2 ${isCurrentAssignment
+              className={`p-4 rounded-2xl transition-all border ${isCurrentAssignment
                   ? 'bg-success/10 border-success/30'
                   : isAssignedElsewhere
-                  ? 'bg-cream-100/30 border-cream-200/30 opacity-40'
-                  : 'bg-white/60 border-cream-300/30 hover:border-cream-400'
+                  ? 'bg-[#221710]/80 border-white/5 opacity-45'
+                  : 'bg-[#24170f]/70 border-white/10 hover:border-white/20'
                 }`}
             >
               <div className="flex flex-col sm:flex-row sm:items-center gap-3">
                 {/* Voice info */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <div className="font-display font-semibold text-base text-sleep-900">{voice.name}</div>
+                    <div className="font-display font-semibold text-base text-cream-100">{voice.name}</div>
                     {isCurrentAssignment && (
                       <span className="text-[10px] bg-success/20 text-success px-2 py-0.5 rounded-full font-display font-bold">ASSIGNED</span>
                     )}
                     {isAssignedElsewhere && (
-                      <span className="text-[10px] bg-sleep-200/60 text-sleep-400 px-2 py-0.5 rounded-full font-display font-bold">USED BY {assignedToCharacter.toUpperCase()}</span>
+                      <span className="text-[10px] bg-sleep-700/60 text-cream-300/75 px-2 py-0.5 rounded-full font-display font-bold">USED BY {assignedToCharacter.toUpperCase()}</span>
                     )}
                   </div>
-                  <div className="text-xs text-sleep-400 font-body mt-0.5 line-clamp-1">{voice.description}</div>
+                  <div className="text-xs text-cream-400/65 font-body mt-0.5 line-clamp-1">{voice.description}</div>
                   <div className="flex gap-1.5 mt-2">
-                    <span className="text-[11px] px-2.5 py-1 bg-cream-200 text-sleep-500 rounded-lg font-display font-semibold capitalize">
+                    <span className="text-[11px] px-2.5 py-1 bg-[#140e0a]/90 text-cream-300/80 rounded-lg font-display font-semibold capitalize border border-white/10">
                       {voice.gender}
                     </span>
-                    <span className="text-[11px] px-2.5 py-1 bg-cream-200 text-sleep-500 rounded-lg font-display font-semibold capitalize">
+                    <span className="text-[11px] px-2.5 py-1 bg-[#140e0a]/90 text-cream-300/80 rounded-lg font-display font-semibold capitalize border border-white/10">
                       {voice.style}
                     </span>
                   </div>
@@ -370,8 +382,8 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
                     onClick={() => handleVoicePreview(voice.id)}
                     disabled={playingVoice === voice.id}
                     className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-3 sm:py-2 rounded-xl font-display font-semibold text-xs transition-all active:scale-[0.97] ${playingVoice === voice.id
-                        ? 'bg-dream-glow/20 text-dream-glow'
-                        : 'bg-cream-200 hover:bg-cream-300 text-sleep-600'
+                        ? 'bg-sleep-700 text-white'
+                        : 'bg-sleep-700/70 hover:bg-sleep-650/80 text-white'
                       }`}
                   >
                     {playingVoice === voice.id ? (
@@ -387,7 +399,7 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
                       className={`flex-1 sm:flex-none flex items-center justify-center gap-1.5 px-4 py-3 sm:py-2 rounded-xl text-xs font-display font-bold transition-all active:scale-[0.97] ${isCurrentAssignment
                           ? 'bg-success text-white'
                           : isAssignedElsewhere
-                          ? 'bg-sleep-200/50 text-sleep-400 cursor-not-allowed'
+                          ? 'bg-white/10 text-cream-400/60 cursor-not-allowed'
                           : 'bg-dream-glow text-white hover:bg-dream-aurora shadow-glow-sm'
                         }`}
                     >
@@ -416,20 +428,20 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
     if (!selectedCharacter) return null;
 
     return (
-      <div className="mt-4 p-4 bg-cream-100/60 border-2 border-cream-300/40 rounded-2xl">
-        <h4 className="font-display font-bold text-sm mb-3 text-sleep-900">Preview: {selectedCharacter}</h4>
+      <div className="mt-4 p-4 bg-[#1b120c]/82 border border-white/10 rounded-[24px] shadow-card">
+        <h4 className="font-display font-bold text-sm mb-3 text-cream-100">Preview: {selectedCharacter}</h4>
         {voiceAssignments[selectedCharacter] && (
           <div className="flex flex-col sm:flex-row sm:items-center gap-3">
             <div className="flex items-center gap-2">
-              <Volume2 size={16} className="text-sleep-400" />
-              <span className="text-sm text-sleep-900 font-display font-semibold">
+              <Volume2 size={16} className="text-cream-400/65" />
+              <span className="text-sm text-cream-100 font-display font-semibold">
                 {getVoiceById(voiceAssignments[selectedCharacter])?.name}
               </span>
             </div>
             <button
               onClick={() => handleVoicePreview(voiceAssignments[selectedCharacter])}
               disabled={playingVoice === voiceAssignments[selectedCharacter]}
-              className="w-full sm:w-auto px-4 py-3 sm:py-2 bg-success text-white rounded-xl text-xs font-display font-bold hover:bg-success/80 transition-all disabled:opacity-50 active:scale-[0.97] flex items-center justify-center gap-1.5"
+              className="w-full sm:w-auto px-4 py-3 sm:py-2 bg-sleep-700/70 text-white rounded-xl text-xs font-display font-bold hover:bg-sleep-650/80 transition-all disabled:opacity-50 active:scale-[0.97] flex items-center justify-center gap-1.5"
             >
               <Play size={14} />
               {playingVoice === voiceAssignments[selectedCharacter] ? 'Playing…' : 'Play Preview'}
@@ -441,19 +453,19 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
   };
 
   return (
-    <div className="w-full max-w-6xl mx-auto p-4 sm:p-5 bg-white/80 backdrop-blur-sm border-2 border-cream-300/50 rounded-3xl shadow-card">
+    <div className="w-full max-w-6xl mx-auto p-4 sm:p-5 bg-[#24170f]/80 backdrop-blur-md border border-white/10 rounded-[24px] shadow-card text-cream-100">
       {/* Header */}
       <div className="mb-4 sm:mb-5">
-        <h2 className="text-lg sm:text-xl font-display font-bold text-sleep-900 mb-2">Voice Assignment</h2>
+        <h2 className="text-lg sm:text-xl font-display font-bold text-cream-100 mb-2">Voice Assignment</h2>
         <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-2">
-          <p className="text-sleep-500 text-sm font-body">Assign voices to your characters</p>
+          <p className="text-cream-300/75 text-sm font-body">Assign voices to your characters</p>
           <div className="flex gap-2">
             <button
               onClick={handleAutoAssignVoices}
               disabled={isAutoAssigning}
               className={`flex-1 sm:flex-none px-4 py-3 sm:py-2 rounded-xl font-display font-semibold text-sm sm:text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] ${isAutoAssigning
-                  ? 'bg-cream-300/50 text-sleep-400 cursor-not-allowed'
-                  : 'bg-pastel-lavender text-white hover:bg-pastel-lavender/80'
+                  ? 'bg-white/10 text-cream-400/60 cursor-not-allowed'
+                  : 'bg-sleep-700/70 text-white hover:bg-sleep-650/80'
                 }`}
             >
               <Wand2 className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
@@ -463,8 +475,8 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
               onClick={handleSaveAndContinue}
               disabled={!allAssigned}
               className={`flex-1 sm:flex-none px-4 py-3 sm:py-2 rounded-xl font-display font-semibold text-sm sm:text-xs flex items-center justify-center gap-1.5 transition-all active:scale-[0.97] ${allAssigned
-                  ? 'bg-success text-white hover:bg-success/80'
-                  : 'bg-cream-200 text-sleep-400 cursor-not-allowed'
+                  ? 'bg-dream-glow text-white hover:bg-dream-aurora shadow-glow-sm'
+                  : 'bg-white/10 text-cream-400/60 cursor-not-allowed'
                 }`}
             >
               <Check className="w-4 h-4 sm:w-3.5 sm:h-3.5" />
@@ -473,13 +485,13 @@ const VoiceAssignmentPanel = ({ script, scriptLines, user, onVoiceAssignmentsCha
           </div>
         </div>
         {/* Progress bar */}
-        <div className="mt-3 bg-cream-200 rounded-full h-2.5 sm:h-2 overflow-hidden">
+        <div className="mt-3 bg-white/10 rounded-full h-2.5 sm:h-2 overflow-hidden">
           <div
             className="bg-success h-full rounded-full transition-all duration-300"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
-        <div className="text-xs text-sleep-400 mt-1 font-body">{assignedCount}/{characters.length} characters assigned</div>
+        <div className="text-xs text-cream-400/65 mt-1 font-body">{assignedCount}/{characters.length} characters assigned</div>
       </div>
 
       {/* ── MOBILE LAYOUT: Toggle between panels ── */}

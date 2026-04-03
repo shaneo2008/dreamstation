@@ -33,34 +33,37 @@ export default function BuddyTimerApp({ onExit, onStoryTime }) {
   };
 
   return (
-    <div className="relative min-h-screen max-w-md mx-auto" style={{ background: '#FFF9EE' }}>
-      <AnimatePresence mode="wait">
-        {screen === 'selection' && (
-          <motion.div key="selection" {...pageTransition}>
+    <div className="relative min-h-screen bg-sleep-gradient text-cream-100 overflow-hidden">
+      <div className="absolute inset-0 bg-sleep-glow pointer-events-none" />
+      <div className="relative max-w-md mx-auto min-h-screen px-4 py-5 sm:py-6">
+        <AnimatePresence mode="wait">
+          {screen === 'selection' && (
+            <motion.div key="selection" {...pageTransition} className="min-h-[calc(100vh-2.5rem)]">
             <CharacterSelection onExit={onExit ? handleExit : undefined} />
-          </motion.div>
-        )}
-        {screen === 'picker' && (
-          <motion.div key="picker" {...pageTransition}>
+            </motion.div>
+          )}
+          {screen === 'picker' && (
+            <motion.div key="picker" {...pageTransition} className="min-h-[calc(100vh-2.5rem)]">
             <RoutinePicker />
-          </motion.div>
-        )}
-        {screen === 'setup' && (
-          <motion.div key="setup" {...pageTransition}>
+            </motion.div>
+          )}
+          {screen === 'setup' && (
+            <motion.div key="setup" {...pageTransition} className="min-h-[calc(100vh-2.5rem)]">
             <RoutineSetup />
-          </motion.div>
-        )}
-        {screen === 'player' && (
-          <motion.div key="player" {...pageTransition}>
+            </motion.div>
+          )}
+          {screen === 'player' && (
+            <motion.div key="player" {...pageTransition} className="min-h-[calc(100vh-2.5rem)]">
             <ActivePlayer />
-          </motion.div>
-        )}
-        {screen === 'complete' && (
-          <motion.div key="complete" {...pageTransition}>
+            </motion.div>
+          )}
+          {screen === 'complete' && (
+            <motion.div key="complete" {...pageTransition} className="min-h-[calc(100vh-2.5rem)]">
             <RoutineComplete onStoryTime={onStoryTime} />
-          </motion.div>
-        )}
-      </AnimatePresence>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

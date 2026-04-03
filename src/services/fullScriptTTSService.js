@@ -9,6 +9,25 @@ const FULL_SCRIPT_TTS_WEBHOOK = "https://learncastai.app.n8n.cloud/webhook/full-
 const POLLING_INTERVAL = 5000; // 5 seconds
 const MAX_POLLING_TIME = 1200000; // 20 minutes
 
+const getLineOrder = (line, fallbackIndex = 0) => {
+  const candidates = [
+    line?.lineNumber,
+    line?.line_number,
+    line?.line_index != null ? Number(line.line_index) + 1 : null,
+    line?.index != null ? Number(line.index) + 1 : null,
+    fallbackIndex + 1,
+  ];
+
+  for (const candidate of candidates) {
+    const parsed = Number(candidate);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+
+  return fallbackIndex + 1;
+};
+
 // Poll Supabase for audio production completion
 const pollProductionStatus = async (productionId, startTime = Date.now()) => {
   const elapsed = Date.now() - startTime;
@@ -66,6 +85,7 @@ export const generateFullScriptTTS = async (scriptData, user) => {
   console.log('🎭 Fetching voice assignments for script:', scriptData.id);
   const voiceAssignments = await getVoiceAssignments(scriptData.id, user.id);
   console.log('🎭 Retrieved voice assignments:', voiceAssignments);
+  const orderedLines = [...scriptData.lines].sort((a, b) => getLineOrder(a) - getLineOrder(b));
 
   // Prepare payload for n8n workflow
   const payload = {
@@ -75,7 +95,7 @@ export const generateFullScriptTTS = async (scriptData, user) => {
 
     // Script data in the format n8n expects
     script_data: {
-      script_lines: scriptData.lines.map((line, index) => {
+      script_lines: orderedLines.map((line, index) => {
         const speaker = line.speaker || 'Narrator';
         const assignedVoiceId = voiceAssignments[speaker] || 'e00d0e4c-a5c8-443f-a8a3-473eb9a62355';
 

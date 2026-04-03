@@ -241,7 +241,7 @@ export const useScriptEditor = (scriptId) => {
     try {
       const newScript = await db.createScript({
         story_id: storyId,
-        title: scriptData.title || 'Untitled Script',
+        title: scriptData.title || 'Untitled Story',
         episode_number: scriptData.episode_number || 1,
         status: 'draft',
         generation_method: 'manual'
